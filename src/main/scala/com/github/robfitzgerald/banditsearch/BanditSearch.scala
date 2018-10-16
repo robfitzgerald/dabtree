@@ -1,5 +1,8 @@
 package com.github.robfitzgerald.banditsearch
 
+import com.github.robfitzgerald.banditsearch.banditnode.BanditParent
+
+
 trait BanditSearch {
 
   type State
@@ -16,4 +19,7 @@ trait BanditSearch {
 
   def rewardOf(value: Value): Reward
 
+  def childrenOf(state: State): Array[(Option[Action], State)]
+
+  def root(): BanditParent[State, Action, Value]
 }
