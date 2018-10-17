@@ -21,7 +21,7 @@ trait Sampler [State, Action, Value] {
 
   def childrenOf: State => Array[(Option[Action], State)]
 
-  def rewardFunction: (HasMCTSStats[Value], Value, Int) => Reward
+  def rewardFunction: Value => Reward
 
   def run(parent: Parent, iterations: Int): Unit = {
     cfor(0)(_ < iterations, _ + 1) { _ =>
@@ -30,8 +30,8 @@ trait Sampler [State, Action, Value] {
       val simulation: State = simulate(selectedChild.state)
       val cost: Value = evaluate(simulation)
 
-      selectedChild.update(cost, rewardFunction(selectedChild, cost, parent.mctsStats.observations))
-      parent.update(cost, rewardFunction(parent, cost, 0))
+      selectedChild.update(cost, rewardFunction(cost))
+      parent.update(cost, rewardFunction(cost))
     }
   }
 }
