@@ -21,14 +21,19 @@ case class BanditParent [S,A,V : Fractional] (
   searchState              : SearchState,
   state                    : S,
   action                   : Option[A],
-  reward                   : Double,
-  mctsStats                : MCTSStats[V],
+  var reward               : Double,
+  var mctsStats            : MCTSStats[V],
   children                 : Array[BanditChild[S,A,V]],
   searchStats              : SearchStats,
   uctExplorationCoefficient: V,
   costBound                : Option[V]
 ) extends BanditNode[S,A,V,Double] with HasChildren[S,A,V,Double] {
   override type Child = BanditChild[S,A,V]
+
+  def update(observation: V, rewardUpdate: Double): Unit = {
+    reward = rewardUpdate
+    mctsStats = mctsStats.add(observation)
+  }
 }
 
 object BanditParent {
