@@ -1,25 +1,24 @@
 package com.github.robfitzgerald.banditsearch
 
-import spire.math.Fractional
-import com.github.robfitzgerald.banditsearch.banditnode.BanditNode
+import com.github.robfitzgerald.banditsearch.banditnode.HasMCTSStats
 import spire.algebra.Order
 
-trait Objective [V <: Fractional[V]] {
+trait Objective [V] {
   def zero: V
   def optimal(a: V, b: V): V
-  def bestSimulation(node: BanditNode[_,_,V,_]): V
+  def bestSimulation(node: HasMCTSStats[V]): V
 }
 
 object Objective {
-  case class Minimize [V <: Fractional[V]] (lowerBounds: V, upperBounds: V)(implicit val ordering: Order[V]) extends Objective[V] {
+  case class Minimize [V : Order] (lowerBounds: V, upperBounds: V)(implicit val ordering: Order[V]) extends Objective[V] {
     override def zero: V = upperBounds
     override def optimal(a: V, b: V): V = if (ordering.compare(a, b) < 0) a else b
-    override def bestSimulation(node: BanditNode[_,_,V,_]): V = node.mctsStats.min
+    override def bestSimulation(node: HasMCTSStats[V]): V = node.mctsStats.min
 }
 
-  case class Maximize [V <: Fractional[V]] (lowerBounds: V, upperBounds: V)(implicit val ordering: Order[V]) extends Objective[V] {
+  case class Maximize [V : Order] (lowerBounds: V, upperBounds: V)(implicit val ordering: Order[V]) extends Objective[V] {
     override def zero: V = lowerBounds
     override def optimal(a: V, b: V): V = if (ordering.compare(a, b) > 0) a else b
-    override def bestSimulation(node: BanditNode[_,_,V,_]): V = node.mctsStats.max
+    override def bestSimulation(node: HasMCTSStats[V]): V = node.mctsStats.max
   }
 }
