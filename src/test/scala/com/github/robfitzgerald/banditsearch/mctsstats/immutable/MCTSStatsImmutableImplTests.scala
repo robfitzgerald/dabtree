@@ -1,12 +1,12 @@
-package com.github.robfitzgerald.banditsearch
+package com.github.robfitzgerald.banditsearch.mctsstats.immutable
 
 import com.github.robfitzgerald.DefaultTest
 
-class MCTSStatsTests extends DefaultTest {
+class MCTSStatsImmutableImplTests extends DefaultTest {
   "MCTSStats" when {
     "empty[Double]()" should {
       "correctly show an empty object" in {
-        val empty: MCTSStats[Double] = MCTSStats.empty[Double]()
+        val empty: MCTSStatsImmutableImpl[Double] = MCTSStatsImmutableImpl.empty[Double]()
         empty.min should equal (0D)
         empty.max should equal (0D)
         empty.mean should equal (0D)
@@ -18,7 +18,7 @@ class MCTSStatsTests extends DefaultTest {
     }
     "empty[BigDecimal]()" should {
       "correctly show an empty object" in {
-        val empty: MCTSStats[BigDecimal] = MCTSStats.empty[BigDecimal]()
+        val empty: MCTSStatsImmutableImpl[BigDecimal] = MCTSStatsImmutableImpl.empty[BigDecimal]()
         empty.min should equal (BigDecimal(0))
         empty.max should equal (BigDecimal(0))
         empty.mean should equal (BigDecimal(0))
@@ -30,7 +30,7 @@ class MCTSStatsTests extends DefaultTest {
     }
     "empty[Double]().add(5.0D)" should {
       "correctly reflect one observation" in {
-        val five: MCTSStats[Double] = MCTSStats.empty[Double]().add(5.0D)
+        val five: MCTSStatsImmutableImpl[Double] = MCTSStatsImmutableImpl.empty[Double]().add(5.0D)
         five.min should equal (5D)
         five.max should equal (5D)
         five.mean should equal (5D)
@@ -42,7 +42,7 @@ class MCTSStatsTests extends DefaultTest {
     }
     "empty[Double]().add(2.5D).add(7.5D)" should {
       "correctly reflect two observations" in {
-        val twoObservations: MCTSStats[Double] = MCTSStats.empty[Double]().add(2.5D).add(7.5D)
+        val twoObservations: MCTSStatsImmutableImpl[Double] = MCTSStatsImmutableImpl.empty[Double]().add(2.5D).add(7.5D)
         val expectedVariance: Double = (math.pow(2.5-5, 2) + math.pow(7.5-5, 2)) / 2
         twoObservations.min should equal (2.5D)
         twoObservations.max should equal (7.5D)

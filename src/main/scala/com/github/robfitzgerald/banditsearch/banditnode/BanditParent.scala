@@ -1,6 +1,7 @@
 package com.github.robfitzgerald.banditsearch.banditnode
 
-import com.github.robfitzgerald.banditsearch.{MCTSStats, SearchStats}
+import com.github.robfitzgerald.banditsearch.SearchStats
+import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
 import spire.math._
 
 /**
@@ -22,7 +23,7 @@ case class BanditParent [S,A,V : Fractional] (
   state                    : S,
   action                   : Option[A],
   var reward               : Double,
-  var mctsStats            : MCTSStats[V],
+  var mctsStats            : MCTSStatsImmutableImpl[V],
   children                 : Array[BanditChild[S,A,V]],
   searchStats              : SearchStats,
   uctExplorationCoefficient: V,

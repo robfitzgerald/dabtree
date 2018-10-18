@@ -1,7 +1,7 @@
 package com.github.robfitzgerald.banditsearch.banditnode
 
-import com.github.robfitzgerald.banditsearch.MCTSStats
+import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
 
 trait HasMCTSStats [V] {
-  def mctsStats: MCTSStats[V]
+  def mctsStats: MCTSStatsImmutableImpl[V]
 }

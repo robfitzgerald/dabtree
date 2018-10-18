@@ -1,6 +1,7 @@
 package com.github.robfitzgerald.banditsearch.banditnode
 
-import com.github.robfitzgerald.banditsearch.{MCTSStats, SearchStats}
+import com.github.robfitzgerald.banditsearch.SearchStats
+import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
 import spire.algebra.Monoid
 import spire.math.Fractional
 
@@ -18,7 +19,7 @@ case class BanditChild[S, A, V: Fractional](
   state: S,
   action: Option[A],
   var reward: Double,
-  var mctsStats: MCTSStats[V]
+  var mctsStats: MCTSStatsImmutableImpl[V]
 ) extends BanditNode[S, A, V, Double] {
   def update(observation: V, rewardUpdate: Double): Unit = {
     reward = rewardUpdate
@@ -52,7 +53,7 @@ object BanditChild {
           childState,
           childAction,
           0D,
-          MCTSStats.empty[V]()
+          MCTSStatsImmutableImpl.empty[V]()
         )
       }
 
