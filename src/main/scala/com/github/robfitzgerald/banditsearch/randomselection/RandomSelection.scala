@@ -6,9 +6,9 @@ import spire.random.rng.Cmwc5
 
 object RandomSelection {
 
-  def complimentaryMultiplyWithCarry[S, A, V]: BanditParent[S, A, V] => BanditChild[S, A, V] = {
+  def complimentaryMultiplyWithCarry[F[_], S, A, V]: BanditParent[F, S, A, V] => BanditChild[F, S, A, V] = {
     val random = Cmwc5()
-    parent: BanditParent[S, A, V] => parent.children(random.nextInt(parent.children.length))
+    parent: BanditParent[F, S, A, V] => parent.children(random.nextInt(parent.children.length))
   }
 
 }

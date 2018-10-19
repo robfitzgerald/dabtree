@@ -12,7 +12,7 @@ trait Objective[V] {
 
   def optimal(a: V, b: V): V
 
-  def bestSimulation(node: HasMCTSStats[V]): V
+  def bestSimulation[F[_]](node: HasMCTSStats[F, V]): V
 }
 
 object Objective {
@@ -24,7 +24,7 @@ object Objective {
 
     override def optimal(a: V, b: V): V = if (ordering.compare(a, b) < 0) a else b
 
-    override def bestSimulation(node: HasMCTSStats[V]): V = node.mctsStats.min
+    override def bestSimulation[F[_]](node: HasMCTSStats[F, V]): V = node.mctsStats.min
   }
 
   case class Maximize[V: Order](badBounds: V, optimalBounds: V)(implicit val ordering: Order[V]) extends Objective[V] {
@@ -34,7 +34,7 @@ object Objective {
 
     override def optimal(a: V, b: V): V = if (ordering.compare(a, b) > 0) a else b
 
-    override def bestSimulation(node: HasMCTSStats[V]): V = node.mctsStats.max
+    override def bestSimulation[F[_]](node: HasMCTSStats[F, V]): V = node.mctsStats.max
   }
 
 }

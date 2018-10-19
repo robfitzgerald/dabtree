@@ -7,7 +7,7 @@ import spire.implicits._
 import spire.algebra._
 
 object UCBPedrosoRei {
-  def rewardFunction[V : Numeric : Trig](node: HasMCTSStats[V], gBest: V, gWorst: V, parentVisits: Int, objective: Objective[V], Cp: Double)(observation: V): Double = {
+  def rewardFunction[F[_], V : Numeric : Trig](node: HasMCTSStats[F, V], gBest: V, gWorst: V, parentVisits: Int, objective: Objective[V], Cp: Double)(observation: V): Double = {
     if (node.mctsStats.observations == 0) 0D
     else {
 

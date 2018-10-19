@@ -6,11 +6,11 @@ import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmuta
 import spire.implicits._
 
 
-trait Sampler [State, Action, Value] {
+trait Sampler [Effect[_], State, Action, Value] {
 
   type Reward = Double
-  type Parent = BanditParent[State, Action, Value]
-  type Child = BanditChild[State, Action, Value]
+  type Parent = BanditParent[Effect, State, Action, Value]
+  type Child = BanditChild[Effect, State, Action, Value]
 
   def objective: Objective[Value]
 
@@ -26,8 +26,8 @@ trait Sampler [State, Action, Value] {
 
   def run(parent: Parent, iterations: Int): Parent = {
 
-    val parentData: (Double, MCTSStatsImmutableImpl[Value]) = (parent.reward, parent.mctsStats)
-    val childrenData: Array[(Double, MCTSStatsImmutableImpl[Value])] =
+    val parentData: (Double, MCTSStatsImmutableImpl[Effect, Value]) = (parent.reward, parent.mctsStats)
+    val childrenData: Array[(Double, MCTSStatsImmutableImpl[Effect, Value])] =
       parent.children.
         map { child =>
           (child.reward, child.mctsStats)
@@ -42,9 +42,9 @@ trait Sampler [State, Action, Value] {
       selectedChild.update(cost, rewardFunction(cost))
       parent.update(cost, rewardFunction(cost))
     }
-
-    parent.copy(
-
-    )
+    ???
+//    parent.copy(
+//
+//    )
   }
 }

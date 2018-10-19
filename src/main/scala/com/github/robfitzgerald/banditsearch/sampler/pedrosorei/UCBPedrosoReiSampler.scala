@@ -9,14 +9,14 @@ import spire.algebra._
 import spire.implicits._
 import spire.math._
 
-case class UCBPedrosoReiSampler[S, A, V: Numeric : Trig](
-  samplerState           : UCBPedrosoReiSamplerState[S, A, V],
-  override val childrenOf: S => Array[(Option[A], S)],
-  override val simulate  : S => S,
-  override val evaluate  : S => V,
-  override val objective : Objective[V],
-  override val randomSelection: BanditParent[S, A, V] => BanditChild[S, A, V] = RandomSelection.complimentaryMultiplyWithCarry
-) extends Sampler[S, A, V] {
+case class UCBPedrosoReiSampler[F[_], S, A, V: Numeric](
+  samplerState                : UCBPedrosoReiSamplerState[S, A, V],
+  override val childrenOf     : S => Array[(Option[A], S)],
+  override val simulate       : S => S,
+  override val evaluate       : S => V,
+  override val objective      : Objective[V],
+  override val randomSelection: BanditParent[F, S, A, V] => BanditChild[F, S, A, V] = RandomSelection.complimentaryMultiplyWithCarry[F, S, A, V]
+) extends Sampler[F, S, A, V] {
   // how can we curry the rewardFunction?
   // we will have new Cp values every algorithm iteration
   // we will possibly have new gBest/gWorst every sample
@@ -26,27 +26,28 @@ case class UCBPedrosoReiSampler[S, A, V: Numeric : Trig](
   // then sampler could be defined based on a MetaSearchNode instead of a BanditParent
   // ...
   // should this Sampler be also defined as the MetaSearchNode type, container for the Parent?
-  val rewardFunction: Double => Reward = {
+  val rewardFunction: V => Reward = {
 
-    UCBPedrosoRei.rewardFunction[Double](this, ???, ???, ???, ???, ???)
+    UCBPedrosoRei.rewardFunction[F, Double](???, ???, ???, ???, ???, ???)(???)
 
+    ???
   }
 }
 
 object UCBPedrosoReiSampler {
-  def initial[S, A, V: Numeric : Trig](
+  def initial[F[_], S, A, V: Numeric](
     childrenOf: S => Array[(Option[A], S)],
     simulate  : S => S,
     evaluate  : S => V,
     objective : Objective[V],
     Cp        : Double = math.sqrt(2)
-  ): UCBPedrosoReiSampler[S,A,V] = {
-    val ucbPedrosoReiSamplerState = UCBPedrosoReiSamplerState[S,A,V](objective.badBounds,objective.optimalBounds,Cp)
-    new UCBPedrosoReiSampler[S,A,V](ucbPedrosoReiSamplerState,childrenOf,simulate,evaluate,objective)
+  ): UCBPedrosoReiSampler[F, S, A, V] = {
+    val ucbPedrosoReiSamplerState = UCBPedrosoReiSamplerState[S, A, V](objective.badBounds, objective.optimalBounds, Cp)
+    new UCBPedrosoReiSampler[F, S, A, V](ucbPedrosoReiSamplerState, childrenOf, simulate, evaluate, objective)
   }
 
-  def promote[S, A, V: Numeric : Trig](
-  ): UCBPedrosoReiSampler[S,A,V] = {
-
+  def promote[F[_], S, A, V: Numeric](
+  ): UCBPedrosoReiSampler[F, S, A, V] = {
+    ???
   }
 }

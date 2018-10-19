@@ -3,7 +3,8 @@ package com.github.robfitzgerald.banditsearch.banditnode
 import com.github.robfitzgerald.banditsearch.SearchStats
 import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
 import spire.algebra.Monoid
-import spire.math.Fractional
+import spire.math.Numeric
+import spire.implicits._
 
 /**
   * represents the child in a Multi-Armed Bandit UCB Search
@@ -15,12 +16,12 @@ import spire.math.Fractional
   * @tparam S user-provided State type
   * @tparam A user-provided Action type
   */
-case class BanditChild[S, A, V: Fractional](
-  state: S,
-  action: Option[A],
-  var reward: Double,
-  var mctsStats: MCTSStatsImmutableImpl[V]
-) extends BanditNode[S, A, V, Double] {
+case class BanditChild[F[_], S, A, V: Numeric](
+  state        : S,
+  action       : Option[A],
+  var reward   : Double,
+  var mctsStats: MCTSStatsImmutableImpl[F, V]
+) extends BanditNode[F, S, A, V, Double] {
   def update(observation: V, rewardUpdate: Double): Unit = {
     reward = rewardUpdate
     mctsStats = mctsStats.add(observation)
@@ -40,20 +41,20 @@ object BanditChild {
     * @tparam A user-provided Action type
     * @return a child node promoted to a BanditParentRegular node
     */
-  def promote[S, A, V: Fractional](
-    child                    : BanditChild[S, A, V],
+  def promote[F[_], S, A, V: Numeric](
+    child                    : BanditChild[F, S, A, V],
     uctExplorationCoefficient: V,
     evaluate                 : Option[S => V],
     generateChildren         : S => Array[(S, Option[A])]
-  )(implicit m: Monoid[V]): BanditParent[S, A, V] = {
+  ): BanditParent[F, S, A, V] = {
 
-    val children: Array[BanditChild[S, A, V]] = generateChildren(child.state).
+    val children: Array[BanditChild[F, S, A, V]] = generateChildren(child.state).
       map { case (childState, childAction) =>
         BanditChild(
           childState,
           childAction,
           0D,
-          MCTSStatsImmutableImpl.empty[V]()
+          MCTSStatsImmutableImpl.empty[F, V]()
         )
       }
 
