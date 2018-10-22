@@ -38,7 +38,3 @@ case class BanditParent[S, A, V : Numeric](
     mctsStats = mctsStats.update(observation)
   }
 }
-
-object BanditParent {
-
-}

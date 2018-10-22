@@ -37,6 +37,7 @@ object MCTSStats extends MCTSStatsTypeclass {
 }
 
 trait MCTSStatsTypeclass {
+
   implicit class MCTSStatsOps[A, V](a: A)(implicit ev: MCTSStats[A, V]) {
     def update(observation: V): A = ev.update(a, observation)
 
@@ -52,4 +53,5 @@ trait MCTSStatsTypeclass {
 
     def observations: Int = ev.observations(a)
   }
+
 }

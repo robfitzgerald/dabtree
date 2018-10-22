@@ -1,6 +1,5 @@
 package com.github.robfitzgerald.banditsearch
 
-import com.github.robfitzgerald.banditsearch.banditnode.HasMCTSStats
 import spire.algebra.Order
 
 trait Objective[V] {
@@ -12,7 +11,9 @@ trait Objective[V] {
 
   def optimal(a: V, b: V): V
 
-  def bestSimulation(node: HasMCTSStats[V]): V
+  def bestSimulation(min: V, max: V): V
+
+  def isBetterThan(a: V, b: V): Boolean
 }
 
 object Objective {
@@ -22,9 +23,11 @@ object Objective {
 
     override def zero: V = badBounds
 
-    override def optimal(a: V, b: V): V = if (ordering.compare(a, b) < 0) a else b
+    override def optimal(a: V, b: V): V = if (isBetterThan(a,b)) a else b
 
-    override def bestSimulation(node: HasMCTSStats[V]): V = node.mctsStats.min
+    override def bestSimulation(min: V, max: V): V = min
+
+    override def isBetterThan(a: V, b: V): Boolean = ordering.compare(a, b) < 0
   }
 
   case class Maximize[V: Order](badBounds: V, optimalBounds: V)(implicit val ordering: Order[V]) extends Objective[V] {
@@ -32,9 +35,11 @@ object Objective {
 
     override def zero: V = badBounds
 
-    override def optimal(a: V, b: V): V = if (ordering.compare(a, b) > 0) a else b
+    override def optimal(a: V, b: V): V = if (isBetterThan(a,b)) a else b
 
-    override def bestSimulation(node: HasMCTSStats[V]): V = node.mctsStats.max
+    override def bestSimulation(min: V, max: V): V = max
+
+    override def isBetterThan(a: V, b: V): Boolean = ordering.compare(a, b) > 0
   }
 
 }

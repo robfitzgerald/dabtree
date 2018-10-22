@@ -1,32 +1,30 @@
 package com.github.robfitzgerald.banditsearch.reward
 
-import com.github.robfitzgerald.banditsearch.Objective
-import com.github.robfitzgerald.banditsearch.banditnode.HasMCTSStats
 import spire.math._
 import spire.implicits._
 import spire.algebra._
 
 object UCBPedrosoRei {
-  def rewardFunction[V : Numeric : Trig](node: HasMCTSStats[V], gBest: V, gWorst: V, parentVisits: Int, objective: Objective[V], Cp: Double)(observation: V): Double = {
-    if (node.mctsStats.observations == 0) 0D
+  def rewardFunction[V : Numeric : Trig](gBest: V, gWorst: V, lBest: V, lAvg: V, pVisits: Int, cVisits: Int, Cp: Double): Double = {
+    if (pVisits == 0) 0D
     else {
 
       val exploitation: Double = {
         if (gWorst == gBest) 0D
         else {
-          pedrosoReiXTerm(gBest, gWorst, objective.bestSimulation(node))
+          pedrosoReiXTerm(gBest, gWorst, lBest)
         }
       }
 
       val exploration = {
         if (Cp == 0) 0D
-        else if (parentVisits == 0) 0D
-        else if (node.mctsStats.observations == 0) Double.PositiveInfinity
+        else if (pVisits == 0) 0D
+        else if (cVisits == 0) Double.PositiveInfinity
         else if (gWorst == gBest) Double.PositiveInfinity
         else {
 
-          val xbar = pedrosoReiXTerm(gBest, gWorst, node.mctsStats.mean)
-          val E = Cp * math.sqrt(math.log(parentVisits) / node.mctsStats.observations)
+          val xbar = pedrosoReiXTerm(gBest, gWorst, lAvg)
+          val E = Cp * math.sqrt(math.log(pVisits) / cVisits)
 
           xbar * E
         }
@@ -44,10 +42,10 @@ object UCBPedrosoRei {
     * @param localSimulation either local best or local average
     * @return
     */
-  def pedrosoReiXTerm[V : Trig](globalBestSimulation: V, globalWorstSimulation: V, localSimulation: V)(implicit t: Numeric[V]): Double = {
+  def pedrosoReiXTerm[V : Numeric](globalBestSimulation: V, globalWorstSimulation: V, localSimulation: V)(implicit t: Trig[V]): Double = {
     val a: V = (globalWorstSimulation - localSimulation) / (globalWorstSimulation - globalBestSimulation)
-    val numer: V = exp(a) - 1
-    val denom: Double = e - 1
-    if (denom != 0D) t.div(numer, t.fromDouble(denom)).toDouble else 0D
+    val numer: V = t.exp(a) - 1
+    val denom: Double = (t.e - 1).toDouble
+    if (denom != 0D) numer.toDouble / denom else 0D
   }
 }
