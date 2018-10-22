@@ -2,6 +2,7 @@ package com.github.robfitzgerald.banditsearch.banditnode
 
 import com.github.robfitzgerald.banditsearch.SearchStats
 import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
+import com.github.robfitzgerald.banditsearch.mctsstats.implicits._
 import spire.math._
 
 /**
@@ -19,22 +20,22 @@ import spire.math._
   * @tparam S user-provided State type
   * @tparam A user-provided Action type
   */
-case class BanditParent[F[_], S, A, V : Numeric](
+case class BanditParent[S, A, V : Numeric](
   searchState              : SearchState,
   state                    : S,
   action                   : Option[A],
   var reward               : Double,
-  var mctsStats            : MCTSStatsImmutableImpl[F,V],
-  children                 : Array[BanditChild[F, S, A, V]],
+  var mctsStats            : MCTSStatsImmutableImpl[V],
+  children                 : Array[BanditChild[S, A, V]],
   searchStats              : SearchStats,
   uctExplorationCoefficient: V,
   costBound                : Option[V]
-) extends BanditNode[F, S, A, V, Double] with HasChildren[F, S, A, V, Double] {
-  override type Child = BanditChild[F, S, A, V]
+) extends BanditNode[S, A, V, Double] with HasChildren[S, A, V, Double] {
+  override type Child = BanditChild[S, A, V]
 
   def update(observation: V, rewardUpdate: Double): Unit = {
     reward = rewardUpdate
-    mctsStats = mctsStats.add(observation)
+    mctsStats = mctsStats.update(observation)
   }
 }
 

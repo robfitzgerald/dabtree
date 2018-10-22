@@ -1,10 +1,9 @@
 package com.github.robfitzgerald.banditsearch.banditnode
 
-trait BanditNode[F[_], S, A, V, R] extends HasMCTSStats[F, V] {
+trait BanditNode[S, A, V, R] extends HasMCTSStats[V] {
   def state: S
 
   def action: Option[A]
 
   def reward: R
 }
-

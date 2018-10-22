@@ -1,14 +1,14 @@
-package com.github.robfitzgerald.banditsearch.mctsstats.immutable
+package com.github.robfitzgerald.banditsearch.mctsstats.mutable
 
 import com.github.robfitzgerald.DefaultTest
+import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
 import com.github.robfitzgerald.banditsearch.mctsstats.implicits._
-import com.github.robfitzgerald.banditsearch.mctsstats.mutable.MCTSStatsMutableImpl
 
-class MCTSStatsImmutableImplTests extends DefaultTest {
-  "MCTSStatsImmutableImpl" when {
+class MCTSStatsMutableImplTests extends DefaultTest {
+  "MCTSStatsMutableImpl" when {
     "empty[Double]()" should {
       "correctly show an empty object" in {
-        val empty: MCTSStatsImmutableImpl[Double] = MCTSStatsImmutableImpl.empty[Double]()
+        val empty: MCTSStatsMutableImpl[Double] = MCTSStatsMutableImpl.empty[Double]()
         empty.min should equal (0D)
         empty.max should equal (0D)
         empty.mean should equal (0D)
@@ -19,7 +19,7 @@ class MCTSStatsImmutableImplTests extends DefaultTest {
     }
     "empty[BigDecimal]()" should {
       "correctly show an empty object" in {
-        val empty: MCTSStatsImmutableImpl[BigDecimal] = MCTSStatsImmutableImpl.empty[BigDecimal]()
+        val empty: MCTSStatsMutableImpl[BigDecimal] = MCTSStatsMutableImpl.empty[BigDecimal]()
         empty.min should equal (BigDecimal(0))
         empty.max should equal (BigDecimal(0))
         empty.mean should equal (BigDecimal(0))
@@ -30,7 +30,7 @@ class MCTSStatsImmutableImplTests extends DefaultTest {
     }
     "empty[Double]().add(5.0D)" should {
       "correctly reflect one observation" in {
-        val five: MCTSStatsImmutableImpl[Double] = MCTSStatsImmutableImpl.empty[Double]().update(5.0D)
+        val five: MCTSStatsMutableImpl[Double] = MCTSStatsMutableImpl.empty[Double]().update(5.0D)
         five.min should equal (5D)
         five.max should equal (5D)
         five.mean should equal (5D)
@@ -41,7 +41,9 @@ class MCTSStatsImmutableImplTests extends DefaultTest {
     }
     "empty[Double]().add(2.5D).add(7.5D)" should {
       "correctly reflect two observations" in {
-        val twoObservations: MCTSStatsImmutableImpl[Double] = MCTSStatsImmutableImpl.empty[Double]().update(2.5D).update(7.5D)
+        val twoObservations: MCTSStatsMutableImpl[Double] = MCTSStatsMutableImpl.empty[Double]()
+        twoObservations.update(2.5D)
+        twoObservations.update(7.5D)
         val expectedVariance: Double = (math.pow(2.5-5, 2) + math.pow(7.5-5, 2)) / 2
         twoObservations.min should equal (2.5D)
         twoObservations.max should equal (7.5D)
@@ -53,15 +55,15 @@ class MCTSStatsImmutableImplTests extends DefaultTest {
     }
     ".toMutable" should {
       "not change the observed values" in {
-        val twoObservations: MCTSStatsImmutableImpl[Double] = MCTSStatsImmutableImpl.empty[Double]().update(2.5D).update(7.5D)
-        val asMutable: MCTSStatsMutableImpl[Double] = twoObservations.toMutable
+        val twoObservations: MCTSStatsMutableImpl[Double] = MCTSStatsMutableImpl.empty[Double]().update(2.5D).update(7.5D)
+        val asImmutable: MCTSStatsImmutableImpl[Double] = twoObservations.toImmutable
         val expectedVariance: Double = (math.pow(2.5-5, 2) + math.pow(7.5-5, 2)) / 2
-        asMutable.min should equal (2.5D)
-        asMutable.max should equal (7.5D)
-        asMutable.mean should equal (5D)
-        asMutable.variance should equal (expectedVariance)
-        asMutable.standardDeviation should equal (math.sqrt(expectedVariance))
-        asMutable.observations should equal (2)
+        asImmutable.min should equal (2.5D)
+        asImmutable.max should equal (7.5D)
+        asImmutable.mean should equal (5D)
+        asImmutable.variance should equal (expectedVariance)
+        asImmutable.standardDeviation should equal (math.sqrt(expectedVariance))
+        asImmutable.observations should equal (2)
       }
     }
   }

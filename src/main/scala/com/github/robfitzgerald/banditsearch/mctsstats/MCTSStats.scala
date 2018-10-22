@@ -5,8 +5,8 @@ import spire.algebra.Order
 import spire.math.Numeric
 import spire.implicits._
 
-trait MCTSStats[F[_], A, V] {
-  def update(a: A, observation: V): F[A]
+trait MCTSStats[A, V] {
+  def update(a: A, observation: V): A
 
   def min(a: A): V
 
@@ -21,12 +21,24 @@ trait MCTSStats[F[_], A, V] {
   def observations(a: A): Int
 }
 
-object MCTSStats {
+object MCTSStats extends MCTSStatsTypeclass {
 
-  def apply[F[_], V: Numeric](): MCTSStatsImmutableImpl[F,V] = MCTSStatsImmutableImpl.empty[F, V]()
+  def apply[V: Numeric](): MCTSStatsImmutableImpl[V] = MCTSStatsImmutableImpl.empty[V]()
 
-  implicit class MCTSStatsOps[F[_], A, V](a: A)(implicit ev: MCTSStats[F, A, V]) {
-    def update(observation: V): F[A] = ev.update(a, observation)
+  def min[V: Order](o: V, min: V): V = if (o < min) o else min
+
+  def max[V: Order](o: V, max: V): V = if (o > max) o else max
+
+  def median[V: Numeric](min: V, max: V): V = (min + max) / 2
+
+  def runningMean[V: Numeric](o: V, mean: V = 0, nextCount: Int = 1): V = mean + ((o - mean) / nextCount)
+
+  def runningVariance[V: Numeric](o: V, vAcc: V, mean: V, nextMean: V): V = vAcc + ((o - mean) * (o - nextMean))
+}
+
+trait MCTSStatsTypeclass {
+  implicit class MCTSStatsOps[A, V](a: A)(implicit ev: MCTSStats[A, V]) {
+    def update(observation: V): A = ev.update(a, observation)
 
     def min: V = ev.min(a)
 
@@ -40,12 +52,4 @@ object MCTSStats {
 
     def observations: Int = ev.observations(a)
   }
-
-  def min[V: Order](o: V, min: V): V = if (o < min) o else min
-
-  def max[V: Order](o: V, max: V): V = if (o > max) o else max
-
-  def runningMean[V: Numeric](o: V, mean: V = 0, nextCount: Int = 1): V = mean + ((o - mean) / nextCount)
-
-  def runningVariance[V: Numeric](o: V, vAcc: V, mean: V, nextMean: V): V = vAcc + ((o - mean) * (o - nextMean))
 }

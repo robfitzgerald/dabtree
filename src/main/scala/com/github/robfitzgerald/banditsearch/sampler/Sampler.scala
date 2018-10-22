@@ -1,16 +1,18 @@
 package com.github.robfitzgerald.banditsearch.sampler
 
+import cats.Monad
+
 import com.github.robfitzgerald.banditsearch.Objective
 import com.github.robfitzgerald.banditsearch.banditnode.{BanditChild, BanditParent, HasMCTSStats}
 import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
 import spire.implicits._
 
 
-trait Sampler [Effect[_], State, Action, Value] {
+trait Sampler [State, Action, Value] {
 
   type Reward = Double
-  type Parent = BanditParent[Effect, State, Action, Value]
-  type Child = BanditChild[Effect, State, Action, Value]
+  type Parent = BanditParent[State, Action, Value]
+  type Child = BanditChild[State, Action, Value]
 
   def objective: Objective[Value]
 
@@ -24,10 +26,10 @@ trait Sampler [Effect[_], State, Action, Value] {
 
   def rewardFunction: Value => Reward
 
-  def run(parent: Parent, iterations: Int): Parent = {
+  def run[F[_] : Monad](parent: Parent, iterations: Int): F[Parent] = {
 
-    val parentData: (Double, MCTSStatsImmutableImpl[Effect, Value]) = (parent.reward, parent.mctsStats)
-    val childrenData: Array[(Double, MCTSStatsImmutableImpl[Effect, Value])] =
+    val parentData: (Double, MCTSStatsImmutableImpl[Value]) = (parent.reward, parent.mctsStats)
+    val childrenData: Array[(Double, MCTSStatsImmutableImpl[Value])] =
       parent.children.
         map { child =>
           (child.reward, child.mctsStats)

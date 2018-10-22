@@ -1,5 +1,7 @@
 package com.github.robfitzgerald.banditsearch.sampler.pedrosorei
 
+import cats.Monad
+
 import com.github.robfitzgerald.banditsearch.Objective
 import com.github.robfitzgerald.banditsearch.banditnode._
 import com.github.robfitzgerald.banditsearch.randomselection.RandomSelection
@@ -9,14 +11,14 @@ import spire.algebra._
 import spire.implicits._
 import spire.math._
 
-case class UCBPedrosoReiSampler[F[_], S, A, V: Numeric](
+case class UCBPedrosoReiSampler[F[_] : Monad, S, A, V: Numeric](
   samplerState                : UCBPedrosoReiSamplerState[S, A, V],
   override val childrenOf     : S => Array[(Option[A], S)],
   override val simulate       : S => S,
   override val evaluate       : S => V,
   override val objective      : Objective[V],
-  override val randomSelection: BanditParent[F, S, A, V] => BanditChild[F, S, A, V] = RandomSelection.complimentaryMultiplyWithCarry[F, S, A, V]
-) extends Sampler[F, S, A, V] {
+  override val randomSelection: BanditParent[S, A, V] => BanditChild[S, A, V] = RandomSelection.complimentaryMultiplyWithCarry[S, A, V]
+) extends Sampler[S, A, V] {
   // how can we curry the rewardFunction?
   // we will have new Cp values every algorithm iteration
   // we will possibly have new gBest/gWorst every sample
@@ -28,14 +30,14 @@ case class UCBPedrosoReiSampler[F[_], S, A, V: Numeric](
   // should this Sampler be also defined as the MetaSearchNode type, container for the Parent?
   val rewardFunction: V => Reward = {
 
-    UCBPedrosoRei.rewardFunction[F, Double](???, ???, ???, ???, ???, ???)(???)
+    UCBPedrosoRei.rewardFunction[Double](???, ???, ???, ???, ???, ???)(???)
 
     ???
   }
 }
 
 object UCBPedrosoReiSampler {
-  def initial[F[_], S, A, V: Numeric](
+  def initial[F[_] : Monad, S, A, V: Numeric](
     childrenOf: S => Array[(Option[A], S)],
     simulate  : S => S,
     evaluate  : S => V,
