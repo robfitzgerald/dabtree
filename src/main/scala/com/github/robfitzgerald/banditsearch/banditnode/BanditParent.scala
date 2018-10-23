@@ -15,7 +15,6 @@ import spire.math._
   * @param mctsStats                 simulation observation statistics, in Double precision
   * @param children                  any child states we are exploring from this node
   * @param searchStats               a count of node search state changes
-  * @param uctExplorationCoefficient UCB coefficient defining exploitation/exploration trade-off
   * @param costBound                 the (optional) computed known constraint on costs of this and any children, in problems where costs are monotonic
   * @tparam S user-provided State type
   * @tparam A user-provided Action type
@@ -28,7 +27,6 @@ case class BanditParent[S, A, V : Numeric](
   var mctsStats            : MCTSStatsImmutableImpl[V],
   children                 : Array[BanditChild[S, A, V]],
   searchStats              : SearchStats,
-  uctExplorationCoefficient: V,
   costBound                : Option[V]
 ) extends BanditNode[S, A, V, Double] with HasChildren[S, A, V, Double] {
   override type Child = BanditChild[S, A, V]

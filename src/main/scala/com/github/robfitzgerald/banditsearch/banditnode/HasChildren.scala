@@ -11,7 +11,5 @@ trait HasChildren[S, A, V, R] {
 
   def searchStats: SearchStats
 
-  def uctExplorationCoefficient: V
-
   def costBound: Option[V]
 }

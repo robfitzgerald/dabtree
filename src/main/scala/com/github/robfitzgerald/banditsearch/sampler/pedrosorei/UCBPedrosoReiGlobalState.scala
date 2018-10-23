@@ -1,25 +1,52 @@
 package com.github.robfitzgerald.banditsearch.sampler.pedrosorei
 
+import cats.kernel.Monoid
+
 import com.github.robfitzgerald.banditsearch.Objective
 import spire.math.Numeric
-import spire.implicits._
 
-case class UCBPedrosoReiGlobalState [S, A, V : Numeric](gBest: V, gWorst: V, Cp: Double, bestSolution: Option[S] = None, bestAction: Option[A] = None) {
+case class UCBPedrosoReiGlobalState [S, A, V : Numeric](gBest: V, gWorst: V, bestSolution: Option[S] = None, bestAction: Option[A] = None, bestCost: Option[V] = None) {
+
   def update(o: V, objective: Objective[V]): UCBPedrosoReiGlobalState[S,A,V] =
     if (objective.isMoreOptimalThan(o, gBest) && objective.isMoreOptimalThan(gWorst, o)) this.copy(gBest = o, gWorst = o)
     else if (objective.isMoreOptimalThan(o, gBest)) this.copy(gBest = o)
     else if (objective.isMoreOptimalThan(gWorst, o)) this.copy(gWorst = o)
     else this
+
+  def combine (that: UCBPedrosoReiGlobalState[S,A,V], objective: Objective[V]): UCBPedrosoReiGlobalState[S,A,V] = {
+    val overallGBest: V = if (objective.isMoreOptimalThan(this.gBest, that.gBest)) this.gBest else that.gBest
+    val overallGWorst: V = if (objective.isMoreOptimalThan(this.gWorst, that.gWorst)) that.gWorst else this.gWorst
+    val (overallBestSolution, overallBestAction, overallBestCost) = UCBPedrosoReiGlobalState.pickBestFrom(this, that, objective)
+    UCBPedrosoReiGlobalState(overallGBest, overallGWorst, overallBestSolution, overallBestAction, overallBestCost)
+  }
 }
 
-object UCBPedrosoReiGlobalState {
-  def apply[S, A, V : Numeric](
-    objective: Objective[V],
-    Cp: Double
-  ): UCBPedrosoReiGlobalState[S,A,V] =
+object UCBPedrosoReiGlobalState extends UCBPerosoReioGlobalStateOps {
+
+  def apply[S, A, V : Numeric](objective: Objective[V]): UCBPedrosoReiGlobalState[S,A,V] =
     new UCBPedrosoReiGlobalState[S,A,V](
       objective.badBounds,
-      objective.optimalBounds,
-      Cp
+      objective.optimalBounds
     )
+
+  def pickBestFrom[S,A,V : Numeric](a: UCBPedrosoReiGlobalState[S,A,V], b: UCBPedrosoReiGlobalState[S,A,V], objective: Objective[V]): (Option[S], Option[A], Option[V]) = {
+    if (a.bestCost.isEmpty && b.bestCost.isEmpty) (None, None, None)
+    else if (a.bestCost.isEmpty) (b.bestSolution, b.bestAction, b.bestCost)
+    else if (b.bestCost.isEmpty) (a.bestSolution, a.bestAction, a.bestCost)
+    else {
+      val (aCost, bCost) = (a.bestCost.get, b.bestCost.get)
+      if (objective.isMoreOptimalThan(aCost, bCost)) (a.bestSolution, a.bestAction, a.bestCost)
+      else (b.bestSolution, b.bestAction, b.bestCost)
+    }
+  }
+}
+
+
+trait UCBPerosoReioGlobalStateOps {
+  implicit def ucbPedrosoReiGlobalStateMonoidOps[S, A, V : Numeric](implicit objective: Objective[V]): Monoid[UCBPedrosoReiGlobalState [S, A, V]] = new Monoid[UCBPedrosoReiGlobalState [S, A, V]] {
+
+    def empty: UCBPedrosoReiGlobalState[S, A, V] = UCBPedrosoReiGlobalState(objective)
+
+    def combine(x: UCBPedrosoReiGlobalState[S, A, V], y: UCBPedrosoReiGlobalState[S, A, V]): UCBPedrosoReiGlobalState[S, A, V] = x.combine(y, objective)
+  }
 }

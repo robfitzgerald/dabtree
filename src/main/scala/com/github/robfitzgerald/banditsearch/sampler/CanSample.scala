@@ -2,6 +2,7 @@ package com.github.robfitzgerald.banditsearch.sampler
 
 import com.github.robfitzgerald.banditsearch.Objective
 import com.github.robfitzgerald.banditsearch.banditnode.{BanditChild, BanditParent}
+import com.github.robfitzgerald.banditsearch.mctsstats.MCTSStats
 import com.github.robfitzgerald.banditsearch.mctsstats.mutable.MCTSStatsMutableImpl
 
 /**
@@ -9,9 +10,9 @@ import com.github.robfitzgerald.banditsearch.mctsstats.mutable.MCTSStatsMutableI
   * @tparam State the user's state representation
   * @tparam Action the user's action representation
   * @tparam Value the user's chosen numeric type. allows for optimizing runtime vs accuracy
-  * @tparam SamplerState a type that holds general global data associated with the search
+  * @tparam Globals a type that holds general global data associated with the search
   */
-trait CanSample [State, Action, Value, SamplerState] {
+trait CanSample [State, Action, Value, Globals] {
 
   //////////////////////////////////////////////////////////////////////////////
   // user-provided members. these provide the problem domain we are searching in
@@ -52,7 +53,7 @@ trait CanSample [State, Action, Value, SamplerState] {
     * update in-place the global sampler state
     * @return ()
     */
-  def updateSamplerState: (SamplerState, Value) => Unit
+  def updateSamplerState: (Globals, Value) => Unit
 
   /**
     * selects the index of a random child
@@ -64,5 +65,5 @@ trait CanSample [State, Action, Value, SamplerState] {
     * computes the reward based on the current stats, global variables, and parent observations
     * @return a reward value for this node.
     */
-  def rewardFunction: (MCTSStatsMutableImpl[Value], SamplerState, Int) => Reward
+  def rewardFunction[StatsType[_]](stats: StatsType[Value], globals: Globals, pVisits: Int)(implicit evidence: MCTSStats[StatsType[Value], Value]): Reward
 }

@@ -37,7 +37,6 @@ object BanditChild {
     * promotes a Child to a Parent
     *
     * @param child                     the child to promote
-    * @param uctExplorationCoefficient exploration coefficient to assign to this parent
     * @param evaluate                  function to evaluate the uctBound, or none to leave un-calculated, which will ignore any operations on this uctBound
     * @param generateChildren          function that produces all possible child action/state tuples for this state
     * @tparam S user-provided State type
@@ -46,7 +45,6 @@ object BanditChild {
     */
   def promote[S, A, V: Numeric](
     child                    : BanditChild[S, A, V],
-    uctExplorationCoefficient: V,
     evaluate                 : Option[S => V],
     generateChildren         : S => Array[(S, Option[A])]
   ): BanditParent[S, A, V] = {
@@ -71,7 +69,6 @@ object BanditChild {
       child.mctsStats,
       children,
       SearchStats(),
-      uctExplorationCoefficient,
       uctBound
     )
   }

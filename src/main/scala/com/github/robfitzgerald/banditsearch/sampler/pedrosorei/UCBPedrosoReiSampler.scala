@@ -4,6 +4,7 @@ import cats.Monad
 
 import com.github.robfitzgerald.banditsearch.Objective
 import com.github.robfitzgerald.banditsearch.banditnode._
+import com.github.robfitzgerald.banditsearch.mctsstats.MCTSStats
 import com.github.robfitzgerald.banditsearch.mctsstats.implicits._
 import com.github.robfitzgerald.banditsearch.mctsstats.mutable.MCTSStatsMutableImpl
 import com.github.robfitzgerald.banditsearch.randomselection.RandomSelection
@@ -27,39 +28,38 @@ class UCBPedrosoReiSampler[S, A, V : Numeric : Trig](
   override val evaluate       : S => V,
   override val objective      : Objective[V],
   override val randomSelection: BanditParent[S, A, V] => Int = RandomSelection.complimentaryMultiplyWithCarry[S, A, V]
-) extends CanSample[S, A, V, UCBPedrosoReiGlobalState[S, A, V]] {
+) extends CanSample[S, A, V, UCBPedrosoReiGlobals[S, A, V]] {
 
-  final def updateStats: (MCTSStatsMutableImpl[V], V) => Unit =
-    (stats, observation) => stats.update(observation)
+  final def updateStats: (MCTSStatsMutableImpl[V], V) => Unit = (stats, observation) => stats.update(observation)
 
-  final def updateSamplerState: (UCBPedrosoReiGlobalState[S, A, V], V) => Unit =
-    (currentSamplerState, observation) => currentSamplerState.update(observation, objective)
+  final def updateSamplerState: (UCBPedrosoReiGlobals[S, A, V], V) => Unit = (currentGlobals, observation) => currentGlobals.copy(state = currentGlobals.state.update(observation, objective))
 
-  final def rewardFunction: (MCTSStatsMutableImpl[V], UCBPedrosoReiGlobalState[S, A, V], Int) => Reward = {
-    (stats, state, pVisits) =>
-      UCBPedrosoRei.rewardFunction[V](
-        state.gBest,
-        state.gWorst,
-        objective.optimal(stats.min, stats.max),
-        stats.mean,
-        pVisits,
-        stats.observations,
-        state.Cp
-      )
+  // we want to have access to an implicit MCTSStats[StatsType[V], V]. see testMagic.sc.
+  // reward function should be generic to mutable/immutable types
+  // because rewardFunction itself does not mutate state.
+
+  final def rewardFunction[StatsType[_]](stats: StatsType[V], globals: UCBPedrosoReiGlobals[S, A, V], pVisits: Int)(implicit evidence: MCTSStats[StatsType[V], V]): Reward = {
+    UCBPedrosoRei.rewardFunction[V](
+      globals.state.gBest,
+      globals.state.gWorst,
+      objective.optimal(stats.min, stats.max),
+      stats.mean,
+      pVisits,
+      stats.observations,
+      globals.meta.Cp
+    )
   }
 }
 
 object UCBPedrosoReiSampler {
 
-  type Payload[S,A,V] = (BanditParent[S,A,V], Option[UCBPedrosoReiSampler[S,A,V]])
+//  type Payload[S,A,V] = (BanditParent[S,A,V], Option[UCBPedrosoReiGlobals[S,A,V]])
 
   def apply[S, A, V: Numeric : Trig](
     simulate  : S => S,
     evaluate  : S => V,
-    objective : Objective[V],
-    Cp        : Double
+    objective : Objective[V]
   ): UCBPedrosoReiSampler[S, A, V] = {
-    val ucbPedrosoReiSamplerState = UCBPedrosoReiGlobalState[S, A, V](objective, Cp)
     new UCBPedrosoReiSampler[S, A, V](simulate, evaluate, objective)
   }
 }

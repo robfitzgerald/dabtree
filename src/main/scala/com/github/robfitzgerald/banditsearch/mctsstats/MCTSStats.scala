@@ -5,6 +5,7 @@ import spire.algebra.Order
 import spire.math.Numeric
 import spire.implicits._
 
+
 trait MCTSStats[A, V] {
   def update(a: A, observation: V): A
 
