@@ -9,33 +9,36 @@ import spire.algebra.Trig
 import spire.math.Numeric
 
 trait UCBPedrosoReiSamplerTypeclass {
-  implicit def UCBPedrosoReiSamplerOps[S, A, V : Numeric : Trig]: Sampler[UCBPedrosoReiSampler[S,A,V]] =
-    new Sampler[UCBPedrosoReiSampler[S,A,V]] {
 
-      def run[F[_] : Monad](sampler: UCBPedrosoReiSampler[S, A, V], iterations: Int): F[UCBPedrosoReiSampler[S, A, V]] = {
+  implicit def UCBPedrosoReiSamplerOps[S, A, V : Numeric : Trig]: Sampler[UCBPedrosoReiSampler[S,A,V], (BanditParent[S, A, V], Option[UCBPedrosoReiGlobalState[S, A, V]])] =
+    new Sampler[UCBPedrosoReiSampler[S,A,V], (BanditParent[S, A, V], Option[UCBPedrosoReiGlobalState[S, A, V]])] {
+      def run[F[_] : Monad](
+        sampler: UCBPedrosoReiSampler[S, A, V],
+        payload: (BanditParent[S, A, V], Option[UCBPedrosoReiGlobalState[S, A, V]]),
+        iterations: Int
+      ): F[(BanditParent[S, A, V], Option[UCBPedrosoReiGlobalState[S, A, V]])] = {
+        val (parent: BanditParent[S, A, V], globalsOption: Option[UCBPedrosoReiGlobalState[S, A, V]]) = payload
+        globalsOption match {
+          case None =>
+            Monad[F].pure{payload}
 
-        val work: F[(BanditParent[S,A,V], UCBPedrosoReiSamplerState[S,A,V])] =
-          Sampler
-            .run[F,S,A,V,UCBPedrosoReiSamplerState[S,A,V]](
-              sampler.parent,
-              iterations,
-              sampler.samplerState,
-              sampler.randomSelection,
-              sampler.simulate,
-              sampler.evaluate,
-              sampler.updateStats,
-              sampler.updateSamplerState,
-              sampler.rewardFunction
-            )
-
-        for {
-          result <- work
-        } yield {
-          val (updatedParent, updatedSamplerState) = result
-          sampler.copy(
-            parent = updatedParent,
-            samplerState = updatedSamplerState
-          )
+          case Some(globals) =>
+            for {
+              result <- Sampler
+                .run[F,S,A,V,UCBPedrosoReiGlobalState[S,A,V]](
+                parent,
+                iterations,
+                globals,
+                sampler.randomSelection,
+                sampler.simulate,
+                sampler.evaluate,
+                sampler.updateStats,
+                sampler.updateSamplerState,
+                sampler.rewardFunction
+              )
+            } yield {
+              (result._1, Some(result._2))
+            }
         }
       }
     }

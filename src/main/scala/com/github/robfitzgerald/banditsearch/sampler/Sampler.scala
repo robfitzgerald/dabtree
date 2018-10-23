@@ -7,8 +7,8 @@ import com.github.robfitzgerald.banditsearch.mctsstats.mutable.MCTSStatsMutableI
 import spire.implicits._
 import spire.math.Numeric
 
-trait Sampler [A] {
-  def run[F[_] : Monad](sampler: A, iterations: Int): F[A]
+trait Sampler [A, P] {
+  def run[F[_] : Monad](sampler: A, payload: P, iterations: Int): F[P]
 }
 
 object Sampler extends SamplerOps {
@@ -75,7 +75,7 @@ object Sampler extends SamplerOps {
 }
 
 trait SamplerOps {
-  implicit class SamplerTypeclass[A](sampler: A)(implicit evidence: Sampler[A]) {
-    def run[F[_] : Monad](iterations: Int): F[A] = evidence.run(sampler, iterations)
+  implicit class SamplerTypeclass[A, P](sampler: A)(implicit evidence: Sampler[A, P]) {
+    def run[F[_] : Monad](payload: P, iterations: Int): F[P] = evidence.run(sampler, payload, iterations)
   }
 }

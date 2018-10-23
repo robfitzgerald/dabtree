@@ -13,15 +13,10 @@ import com.github.robfitzgerald.banditsearch.mctsstats.mutable.MCTSStatsMutableI
   */
 trait CanSample [State, Action, Value, SamplerState] {
 
-  type Reward = Double
-  type Parent = BanditParent[State, Action, Value]
-  type Child = BanditChild[State, Action, Value]
+  //////////////////////////////////////////////////////////////////////////////
+  // user-provided members. these provide the problem domain we are searching in
 
-  /**
-    * selects the index of a random child
-    * @return an int index
-    */
-  def randomSelection: Parent => Int
+  type Reward = Double
 
   /**
     * given a state, simulate state transitions to a terminal state
@@ -35,11 +30,11 @@ trait CanSample [State, Action, Value, SamplerState] {
     */
   def evaluate: State => Value
 
-  /**
-    * the state of the search. holds global variables.
-    * @return a sampler state object
-    */
-  protected def samplerState: SamplerState
+  //////////////////////////////////////////////////////////////////////////
+  // library-provided members. provided by classes that implement CanSample.
+
+  type Parent = BanditParent[State, Action, Value]
+  type Child = BanditChild[State, Action, Value]
 
   /**
     * a Minimize or Maximize objective for this search
@@ -58,6 +53,12 @@ trait CanSample [State, Action, Value, SamplerState] {
     * @return ()
     */
   def updateSamplerState: (SamplerState, Value) => Unit
+
+  /**
+    * selects the index of a random child
+    * @return an int index
+    */
+  def randomSelection: Parent => Int
 
   /**
     * computes the reward based on the current stats, global variables, and parent observations
