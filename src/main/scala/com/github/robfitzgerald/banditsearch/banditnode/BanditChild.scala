@@ -1,13 +1,9 @@
 package com.github.robfitzgerald.banditsearch.banditnode
 
-import cats.Monad
-
 import com.github.robfitzgerald.banditsearch.SearchStats
-import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
 import com.github.robfitzgerald.banditsearch.mctsstats.implicits._
-import spire.algebra.Monoid
+import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
 import spire.math.Numeric
-import spire.implicits._
 
 /**
   * represents the child in a Multi-Armed Bandit UCB Search

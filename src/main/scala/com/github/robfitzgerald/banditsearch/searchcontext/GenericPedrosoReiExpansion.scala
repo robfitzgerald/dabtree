@@ -4,7 +4,7 @@ import cats.implicits._
 import cats.{Monad, MonoidK}
 
 import com.github.robfitzgerald.banditsearch.banditnode.{BanditChild, BanditParent}
-import com.github.robfitzgerald.banditsearch.sampler.pedrosorei.UCBPedrosoReiGlobals
+import com.github.robfitzgerald.banditsearch.pedrosorei.Payload
 import spire.math.Numeric
 
 object GenericPedrosoReiExpansion {
@@ -32,7 +32,7 @@ object GenericPedrosoReiExpansion {
     allowChildExpansion  : S => Boolean,
     evaluate             : Option[S => V],
     generateChildren     : S => Array[(S, Option[A])],
-  )(payload: (BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]])): G[(BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]])] = {
+  )(payload: Payload[S,A,V]): G[Payload[S,A,V]] = {
     if (payload._1.mctsStats.observations < observationsThreshold) Monad[G].pure(payload)
     else if (!allowChildExpansion(payload._1.state)) Monad[G].pure(payload)
     else {
@@ -73,12 +73,12 @@ object GenericPedrosoReiExpansion {
           }
 
           // re-package as payloads
-          val expandedAsPayloads: Array[(BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]])] =
+          val expandedAsPayloads: Array[Payload[S,A,V]] =
             expandedChildren.map { case (expandedChild, _) => (expandedChild, Some(globals)) }
 
           // combine with parent and return, wrapped in container type G
           expandedAsPayloads.foldLeft(Monad[G].pure((updatedParent, Option(globals)))) { (acc, b) =>
-            val rhs: G[(BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]])] = Monad[G].pure(b)
+            val rhs: G[Payload[S,A,V]] = Monad[G].pure(b)
             MonoidK[G].combineK(acc, rhs)
           }
       }
