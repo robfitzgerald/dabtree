@@ -4,25 +4,25 @@ import scala.annotation.tailrec
 
 import cats.Id
 import cats.implicits._
-import cats.kernel.Monoid
 
 import com.github.robfitzgerald.banditsearch.Objective
-import com.github.robfitzgerald.banditsearch.banditnode.{BanditChild, BanditParent, SearchState}
+import com.github.robfitzgerald.banditsearch.banditnode.{BanditParent, SearchState}
 import com.github.robfitzgerald.banditsearch.sampler.implicits._
-import com.github.robfitzgerald.banditsearch.sampler.pedrosorei.{UCBPedrosoReiGlobalState, UCBPedrosoReiGlobals, UCBPedrosoReiSampler}
+import com.github.robfitzgerald.banditsearch.sampler.pedrosorei.{UCBPedrosoReiGlobals, UCBPedrosoReiSampler}
 import com.github.robfitzgerald.banditsearch.searchcontext.{GenericPedrosoReiExpansion, GenericPedrosoReiSynchronization}
 import spire.algebra.Trig
 import spire.math.Numeric
 
 
 /**
-  * runs
+  * runs a search executed in the standard library List container and in the Id effect type
   */
 class LocalSyncSearch[S, A, V: Numeric : Trig](
   simulate              : S => S,
   evaluate              : S => V,
   generateChildren      : S => Array[(S, Option[A])],
   objective             : Objective[V],
+  allowChildExpansion   : S => Boolean,
   synchronize           : Boolean = true,
   explorationCoefficient: Double = math.sqrt(2),
   observationsThreshold : Int = 30,
@@ -38,14 +38,12 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
   def run(iterationsMax: Int, durationMax: Long, samplesPerIteration: Int): (S, V, Double, Int) = {
     val stopTime: Long = System.currentTimeMillis() + durationMax
 
-    val stopExpandFunction: S => Boolean = ???
-
     val expandFunction: Payload => List[Payload] =
       GenericPedrosoReiExpansion.expand[List, S, A, V](
         observationsThreshold,
         rewardThreshold,
         maxExpandPerIteration,
-        stopExpandFunction,
+        allowChildExpansion,
         Some(evaluate),
         generateChildren
       )

@@ -7,6 +7,7 @@ scalaVersion := "2.12.7"
 scalacOptions ++= Seq(
   "-language:higherKinds",
   "-language:existentials",
+  "-language:implicitConversions",
   "-Ypartial-unification"
 )
 
