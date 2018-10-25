@@ -28,8 +28,8 @@ object Sampler extends SamplerOps {
       // convert our data structures from immutable to mutable structures
       var currentSamplerState: SamplerState = samplerState
       var parentReward: Double = parent.reward
-      var parentStats: MCTSStatsMutableImpl[V] = parent.mctsStats.toMutable
-      var childrenRewards: collection.mutable.Buffer[Double] = parent.children.map{ _.reward }.toBuffer
+      val parentStats: MCTSStatsMutableImpl[V] = parent.mctsStats.toMutable
+      val childrenRewards: collection.mutable.Buffer[Double] = parent.children.map{ _.reward }.toBuffer
       val childrenStats: Array[MCTSStatsMutableImpl[V]] = parent.children.map { _.mctsStats.toMutable }
       val childrenStates: IndexedSeq[S] = parent.children.map { _.state }
 

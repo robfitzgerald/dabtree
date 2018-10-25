@@ -31,10 +31,14 @@ class UCBPedrosoReiSampler[S, A, V : Numeric : Trig](
 ) extends CanSample[S, A, V, UCBPedrosoReiGlobals[S, A, V]] {
 
   final def updateStats: (MCTSStatsMutableImpl[V], V) => Unit = (stats, observation) => {
+    // update performed in-place on mutable data
     val _ = stats.update(observation)
   }
 
-  final def updateSamplerState: (UCBPedrosoReiGlobals[S, A, V], V) => UCBPedrosoReiGlobals[S, A, V] = (currentGlobals, observation) => currentGlobals.copy(state = currentGlobals.state.update(observation, objective))
+  final def updateSamplerState: (UCBPedrosoReiGlobals[S, A, V], V) => UCBPedrosoReiGlobals[S, A, V] = (currentGlobals, observation) => {
+    val updatedGlobalState = currentGlobals.state.update(observation, objective)
+    currentGlobals.copy(state = updatedGlobalState)
+  }
 
   // we want to have access to an implicit MCTSStats[StatsType[V], V]. see testMagic.sc.
   // reward function should be generic to mutable/immutable types

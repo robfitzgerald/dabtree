@@ -4,7 +4,7 @@ import cats.implicits._
 import cats.{Monad, MonoidK}
 
 import com.github.robfitzgerald.banditsearch.Objective
-import com.github.robfitzgerald.banditsearch.banditnode.{BanditChild, BanditParent}
+import com.github.robfitzgerald.banditsearch.banditnode.{BanditChild, BanditParent, SearchState}
 import com.github.robfitzgerald.banditsearch.pedrosorei.Payload
 import spire.math.Numeric
 
@@ -64,14 +64,24 @@ object GenericPedrosoReiExpansion {
             val updatedChildren: Array[BanditChild[S, A, V]] = {
               val temp = payload._1.children.toBuffer
               for {
-                expandedIndex <- expandedChildren.map { case (_, index: Int) => index }
+                expandedIndex <- expandedChildren.map { case (_, index: Int) => index }.reverse
               } {
                 temp.remove(expandedIndex)
               }
               temp.toArray
             }
 
-            payload._1.copy(children = updatedChildren)
+            // cancel the parent from searching if all of its children have been expanded
+            if (updatedChildren.length == 0) {
+              payload._1.copy(
+                children = updatedChildren,
+                searchState = SearchState.Cancelled
+              )
+            } else {
+              payload._1.copy(
+                children = updatedChildren
+              )
+            }
           }
 
           // re-package as payloads

@@ -28,7 +28,7 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
   allowChildExpansion   : S => Boolean,
   activatedPayloadLimit : Int,
   totalPayloadCapacity  : Int,
-  startFrontier         : List[(S, Option[A])] = List.empty[(S, Option[A])],
+  startFrontier         : List[(S, Option[A])],
   synchronize           : Boolean = true,
   explorationCoefficient: Int => Double = (_: Int) => math.sqrt(2),
   explorationUpdate     : Option[Double => Double] = None,
@@ -74,18 +74,24 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
       if (it > iterationsMax || System.currentTimeMillis() > stopTime) (frontier, it - 1)
       else {
 
+        println(s"sampling frontier of size ${frontier.size}")
         ///////////////////////
         // 1 --- sample step //
         ///////////////////////
         val sampledFrontier: List[Payload[S, A, V]] =
-        frontier.
-          map { payload =>
-            val (parent, globals) = payload
-            if (parent.searchState == SearchState.Activated) {
-              val updatedPayload: Payload[S, A, V] = Sampler.run[Id]((parent, globals), samplesPerIteration)
-              updatedPayload
-            } else payload
-          }
+          frontier.
+            map { payload =>
+              val (parent, globals) = payload
+              if (parent.searchState == SearchState.Activated) {
+                val updatedPayload: Payload[S, A, V] = Sampler.run[Id]((parent, globals), samplesPerIteration)
+                print("^")
+                updatedPayload
+              } else {
+                print("_")
+                payload
+              }
+            }
+        println()
 
         if (it > iterationsMax || System.currentTimeMillis() > stopTime) (sampledFrontier, it)
         else {
@@ -94,8 +100,8 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
           // 2 --- synchronize step //
           ////////////////////////////
           val syncedFrontier: List[Payload[S, A, V]] =
-          if (!synchronize) sampledFrontier
-          else GenericPedrosoReiSynchronization.synchronize[List, S, A, V](sampledFrontier, Sampler)
+            if (!synchronize) sampledFrontier
+            else GenericPedrosoReiSynchronization.synchronize[List, S, A, V](sampledFrontier, Sampler)
 
           if (it > iterationsMax || System.currentTimeMillis() > stopTime) (syncedFrontier, it)
           else {
@@ -120,6 +126,10 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
               // 4 --- rebalance step //
               //////////////////////////
               val rebalancedFrontier: List[Payload[S, A, V]] = rebalanceFunction(expandedFrontier)
+
+              println(s"-- end of iteration $it --")
+              println(s"${rebalancedFrontier.mkString("\n")}")
+              println()
 
               _run(rebalancedFrontier, it + 1)
             }

@@ -22,6 +22,8 @@ case class MCTSStatsImmutableImpl [V : Numeric] (
   observations: Int = 0
 ) {
   def toMutable: MCTSStatsMutableImpl[V] = new MCTSStatsMutableImpl[V](min, max, mean, varianceAccumulator, observations)
+
+  override def toString: String = f"min $min mean $mean max $max obs $observations"
 }
 
 object MCTSStatsImmutableImpl extends MCTSStatsImmutableTypeclass {

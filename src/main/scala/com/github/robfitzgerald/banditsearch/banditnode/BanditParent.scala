@@ -35,6 +35,15 @@ case class BanditParent[S, A, V: Numeric](
     reward = rewardUpdate
     mctsStats = mctsStats.update(observation)
   }
+
+  override def toString: String = {
+    costBound match {
+      case None =>
+        f"$searchState(cb: ? - ch: ${children.length} $mctsStats - reward $reward)"
+      case Some(costBoundValue) =>
+        f"$searchState(cb: $costBoundValue - ch: ${children.length} $mctsStats - reward $reward)"
+    }
+  }
 }
 
 object BanditParent {
