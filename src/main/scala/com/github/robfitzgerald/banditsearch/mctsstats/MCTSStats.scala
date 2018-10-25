@@ -1,5 +1,6 @@
 package com.github.robfitzgerald.banditsearch.mctsstats
 
+import com.github.robfitzgerald.banditsearch.Objective
 import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
 import spire.algebra.Order
 import spire.math.Numeric
@@ -24,7 +25,7 @@ trait MCTSStats[A, V] {
 
 object MCTSStats extends MCTSStatsTypeclass {
 
-  def apply[V: Numeric](): MCTSStatsImmutableImpl[V] = MCTSStatsImmutableImpl.empty[V]()
+  def apply[V: Numeric](objective: Objective[V]): MCTSStatsImmutableImpl[V] = MCTSStatsImmutableImpl.empty[V](objective)
 
   def min[V: Order](o: V, min: V): V = if (o < min) o else min
 

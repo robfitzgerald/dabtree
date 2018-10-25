@@ -20,7 +20,7 @@ object Sampler extends SamplerOps {
     simulate          : S => S,
     evaluate          : S => V,
     updateStats       : (MCTSStatsMutableImpl[V], V) => Unit,
-    updateSamplerState: (SamplerState, V) => Unit,
+    updateSamplerState: (SamplerState, V) => SamplerState,
     rewardFunction    : (MCTSStatsMutableImpl[V], SamplerState, Int) => Double
   ): F[(BanditParent[S,A,V], SamplerState)] = {
     Monad[F].pure {
@@ -42,9 +42,9 @@ object Sampler extends SamplerOps {
         val simulation: S = simulate(selectedState)
         val cost: V = evaluate(simulation)
 
-        // perform update on child and parent
+        // perform update on child and parent (globals via immutable semantics, parent/child via mutable)
         val selectedChildStats = childrenStats(selectedChildIndex)
-        updateSamplerState(currentSamplerState, cost)
+        currentSamplerState = updateSamplerState(currentSamplerState, cost)
         updateStats(selectedChildStats, cost)
         updateStats(parentStats, cost)
         childrenRewards(selectedChildIndex) = rewardFunction(selectedChildStats, currentSamplerState, parentStats.observations)

@@ -53,7 +53,7 @@ trait CanSample [State, Action, Value, Globals] {
     * update in-place the global sampler state
     * @return ()
     */
-  def updateSamplerState: (Globals, Value) => Unit
+  def updateSamplerState: (Globals, Value) => Globals
 
   /**
     * selects the index of a random child

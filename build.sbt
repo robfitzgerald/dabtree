@@ -8,7 +8,9 @@ scalacOptions ++= Seq(
   "-language:higherKinds",
   "-language:existentials",
   "-language:implicitConversions",
-  "-Ypartial-unification"
+  "-Ypartial-unification",
+  "-Ywarn-value-discard",
+  "-Xfatal-warnings"
 )
 
 libraryDependencies += "org.typelevel" %% "spire" % "0.14.1"

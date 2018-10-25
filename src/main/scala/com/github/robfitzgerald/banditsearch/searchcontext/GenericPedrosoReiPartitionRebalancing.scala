@@ -1,5 +1,6 @@
 package com.github.robfitzgerald.banditsearch.searchcontext
 
+import scala.annotation.tailrec
 import scala.collection.SortedSet
 
 import cats.data.Chain
@@ -12,22 +13,21 @@ import spire.math.Numeric
 
 object GenericPedrosoReiPartitionRebalancing {
 
-  type RankedPayload[S,A,V] = SortedSet[(Payload[S,A,V], Double)]
+  type RankedPayload[S, A, V] = SortedSet[(Payload[S, A, V], Double)]
 
   def rebalance[G[_] : Monad : MonoidK : Foldable, S, A, V: Numeric](
     activatedPayloadLimit: Int,
-    payloadCapacity: Int,
-    rankingPolicy: Payload[S,A,V] => Double
+    payloadCapacity      : Int,
+    rankingPolicy        : Payload[S, A, V] => Double
   )(payloads: G[Payload[S, A, V]]): G[Payload[S, A, V]] = {
 
 
-
-    implicit val ordering: Ordering[(Payload[S,A,V], Double)] = Ordering.by(-_._2)
+    implicit val ordering: Ordering[(Payload[S, A, V], Double)] = Ordering.by(-_._2)
 
     // evaluate all non-cancelled payloads in this partition, holding cancelled payloads aside
-    val (nonCancelledRankedPayloads: RankedPayload[S,A,V], cancelledPayloads: Chain[Payload[S,A,V]]) =
+    val (nonCancelledRankedPayloads: RankedPayload[S, A, V], cancelledPayloads: Chain[Payload[S, A, V]]) =
       payloads.
-        foldLeft((SortedSet.empty[(Payload[S,A,V], Double)],Chain.empty[Payload[S,A,V]])) { case (accumulator, payload) =>
+        foldLeft((SortedSet.empty[(Payload[S, A, V], Double)], Chain.empty[Payload[S, A, V]])) { case (accumulator, payload) =>
           val (parent, _) = payload
           val (nonCancelled, cancelled) = accumulator
           parent.searchState match {
@@ -40,43 +40,50 @@ object GenericPedrosoReiPartitionRebalancing {
         }
 
     // sort and re-label nonCancelled payloads
-    val rebalancedNonCancelledPayloads: Chain[Payload[S,A,V]] = updateSearchNodeState[S,A,V](nonCancelledRankedPayloads, activatedPayloadLimit, payloadCapacity)
+    val rebalancedNonCancelledPayloads: Chain[Payload[S, A, V]] = updateSearchNodeState[S, A, V](nonCancelledRankedPayloads, activatedPayloadLimit, payloadCapacity)
 
     // reassemble rebalanced nodes in original container type
-    (cancelledPayloads ++ rebalancedNonCancelledPayloads).foldLeft(MonoidK[G].empty[Payload[S,A,V]]) { (acc, b) =>
-      val rhs: G[Payload[S,A,V]] = Monad[G].pure(b)
+    (cancelledPayloads ++ rebalancedNonCancelledPayloads).foldLeft(MonoidK[G].empty[Payload[S, A, V]]) { (acc, b) =>
+      val rhs: G[Payload[S, A, V]] = Monad[G].pure(b)
       MonoidK[G].combineK(acc, rhs)
     }
   }
 
-  def updateSearchNodeState[S,A,V](
-    nonCancelledPayloads: SortedSet[(Payload[S,A,V], Double)],
+  def updateSearchNodeState[S, A, V: Numeric](
+    nonCancelledPayloads: SortedSet[(Payload[S, A, V], Double)],
     activatedPayloadLimit: Int,
-    payloadCapacity: Int
-  ): Chain[Payload[S,A,V]] = {
+    payloadCapacity     : Int
+  ): Chain[Payload[S, A, V]] = {
 
     // todo: sort and re-label nonCancelled payloads
-    // taken from SO-Routing:
 
-//    def updateUCTSearchNodeState(evaluated: Seq[BanditSearchPayload], activePayloadLimit: Int, noncancelledPayloadLimit: Int): Seq[BanditSearchPayload] = {
-//
-//      @tailrec
-//      def update(index: Int = 0, solution: List[BanditSearchPayload] = List()): List[BanditSearchPayload] = {
-//        if (index == evaluated.size) solution
-//        else {
-//          val thisPayload: BanditSearchPayload = evaluated(index)
-//          val thisNode: UCTSearch = thisPayload.uctSearch
-//          val updatedNode: UCTSearch =
-//            if (index < activePayloadLimit) thisNode.asActive
-//            else if (index < noncancelledPayloadLimit) thisNode.asSuspended
-//            else thisNode.asCancelled
-//          val updatedPayload: BanditSearchPayload = thisPayload.copy(uctSearch = updatedNode)
-//          update(index + 1, updatedPayload +: solution)
-//        }
-//      }
-//
-//      update()
-//    }
-    ???
+    @tailrec
+    def _update(sorted: SortedSet[(Payload[S, A, V], Double)], solution: Chain[Payload[S, A, V]] = Chain.empty[Payload[S, A, V]]): Chain[Payload[S, A, V]] = {
+      if (solution.size == payloadCapacity) {
+
+        // we have reached our active payload limit, so we must force the cancellation of any remaining payloads.
+        val cancelledRemainder: Chain[Payload[S, A, V]] = {
+          sorted.foldLeft(Chain.empty[Payload[S, A, V]]) { (acc, evaluatedPayload) =>
+            val (parent, _) = evaluatedPayload._1
+            val cancelledParent = parent.copy(searchState = SearchState.Cancelled)
+            acc :+ (cancelledParent, None)
+          }
+        }
+        solution ++ cancelledRemainder
+      } else {
+        sorted.headOption match {
+          case None => solution
+          case Some((payload: Payload[S, A, V], _: Double)) =>
+            val (parent, globals) = payload
+            val updatedParent =
+              if (solution.size < activatedPayloadLimit) parent.copy(searchState = SearchState.Activated)
+              else parent.copy(searchState = SearchState.Suspended)
+
+            _update(sorted.tail, solution :+ (updatedParent, globals))
+        }
+      }
+    }
+
+    _update(nonCancelledPayloads)
   }
 }

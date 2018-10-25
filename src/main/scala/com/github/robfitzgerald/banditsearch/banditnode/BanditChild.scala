@@ -1,6 +1,8 @@
 package com.github.robfitzgerald.banditsearch.banditnode
 
-import com.github.robfitzgerald.banditsearch.SearchStats
+
+
+import com.github.robfitzgerald.banditsearch.{Objective, SearchStats}
 import com.github.robfitzgerald.banditsearch.mctsstats.implicits._
 import com.github.robfitzgerald.banditsearch.mctsstats.immutable.MCTSStatsImmutableImpl
 import spire.math.Numeric
@@ -42,18 +44,11 @@ object BanditChild {
   def promote[S, A, V: Numeric](
     child                    : BanditChild[S, A, V],
     evaluate                 : Option[S => V],
-    generateChildren         : S => Array[(S, Option[A])]
+    generateChildren         : S => Array[(S, Option[A])],
+    objective                : Objective[V]
   ): BanditParent[S, A, V] = {
 
-    val children: Array[BanditChild[S, A, V]] = generateChildren(child.state).
-      map { case (childState, childAction) =>
-        BanditChild(
-          childState,
-          childAction,
-          0D,
-          MCTSStatsImmutableImpl.empty[V]()
-        )
-      }
+    val children: Array[BanditChild[S, A, V]] = generateChildren(child.state).map {toBanditChild[S, A, V](objective)}
 
     val uctBound: Option[V] = evaluate.map { fn => fn(child.state) }
 
@@ -68,4 +63,15 @@ object BanditChild {
       uctBound
     )
   }
+
+  def toBanditChild [S, A, V : Numeric](objective: Objective[V])(payload: (S, Option[A])): BanditChild[S, A, V] = {
+    val (childState, childAction) = payload
+      BanditChild(
+        childState,
+        childAction,
+        Double.PositiveInfinity,
+        MCTSStatsImmutableImpl.empty[V](objective)
+      )
+  }
+
 }

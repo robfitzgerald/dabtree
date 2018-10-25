@@ -10,4 +10,5 @@ case class SearchStats(activated: Int = 1, suspended: Int = 0, cancelled: Int = 
       this.childPromoted + that.childPromoted
     )
   }
+  def totalStateTransitions: Int = (activated - 1) + suspended + cancelled
 }

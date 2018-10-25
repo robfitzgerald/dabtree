@@ -30,9 +30,11 @@ class UCBPedrosoReiSampler[S, A, V : Numeric : Trig](
   override val randomSelection: BanditParent[S, A, V] => Int = RandomSelection.complimentaryMultiplyWithCarry[S, A, V]
 ) extends CanSample[S, A, V, UCBPedrosoReiGlobals[S, A, V]] {
 
-  final def updateStats: (MCTSStatsMutableImpl[V], V) => Unit = (stats, observation) => stats.update(observation)
+  final def updateStats: (MCTSStatsMutableImpl[V], V) => Unit = (stats, observation) => {
+    val _ = stats.update(observation)
+  }
 
-  final def updateSamplerState: (UCBPedrosoReiGlobals[S, A, V], V) => Unit = (currentGlobals, observation) => currentGlobals.copy(state = currentGlobals.state.update(observation, objective))
+  final def updateSamplerState: (UCBPedrosoReiGlobals[S, A, V], V) => UCBPedrosoReiGlobals[S, A, V] = (currentGlobals, observation) => currentGlobals.copy(state = currentGlobals.state.update(observation, objective))
 
   // we want to have access to an implicit MCTSStats[StatsType[V], V]. see testMagic.sc.
   // reward function should be generic to mutable/immutable types
@@ -52,8 +54,6 @@ class UCBPedrosoReiSampler[S, A, V : Numeric : Trig](
 }
 
 object UCBPedrosoReiSampler {
-
-//  type Payload[S,A,V] = (BanditParent[S,A,V], Option[UCBPedrosoReiGlobals[S,A,V]])
 
   def apply[S, A, V: Numeric : Trig](
     simulate  : S => S,

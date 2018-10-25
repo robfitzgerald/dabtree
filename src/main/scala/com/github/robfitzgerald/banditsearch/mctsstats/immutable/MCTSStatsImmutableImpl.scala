@@ -1,5 +1,6 @@
 package com.github.robfitzgerald.banditsearch.mctsstats.immutable
 
+import com.github.robfitzgerald.banditsearch.Objective
 import com.github.robfitzgerald.banditsearch.mctsstats.MCTSStats
 import com.github.robfitzgerald.banditsearch.mctsstats.mutable.MCTSStatsMutableImpl
 import spire.implicits._
@@ -24,7 +25,16 @@ case class MCTSStatsImmutableImpl [V : Numeric] (
 }
 
 object MCTSStatsImmutableImpl extends MCTSStatsImmutableTypeclass {
-  def empty[V : Numeric](): MCTSStatsImmutableImpl[V] = MCTSStatsImmutableImpl[V](0,0,0,0)
+  def empty[V : Numeric](objective: Objective[V]): MCTSStatsImmutableImpl[V] = {
+    objective match {
+      case Objective.Minimize(optimalBounds, badBounds) =>
+        val midpoint = (badBounds + optimalBounds) / 2
+        MCTSStatsImmutableImpl(badBounds,optimalBounds,midpoint,0)
+      case Objective.Maximize(optimalBounds, badBounds) =>
+        val midpoint = (badBounds + optimalBounds) / 2
+        MCTSStatsImmutableImpl(optimalBounds,badBounds,midpoint,0)
+    }
+  }
 }
 
 trait MCTSStatsImmutableTypeclass {

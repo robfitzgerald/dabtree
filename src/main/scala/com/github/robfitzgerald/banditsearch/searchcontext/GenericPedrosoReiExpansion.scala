@@ -3,6 +3,7 @@ package com.github.robfitzgerald.banditsearch.searchcontext
 import cats.implicits._
 import cats.{Monad, MonoidK}
 
+import com.github.robfitzgerald.banditsearch.Objective
 import com.github.robfitzgerald.banditsearch.banditnode.{BanditChild, BanditParent}
 import com.github.robfitzgerald.banditsearch.pedrosorei.Payload
 import spire.math.Numeric
@@ -29,6 +30,7 @@ object GenericPedrosoReiExpansion {
     observationsThreshold: Int,
     rewardThreshold: Double,
     maxExpandPerIteration: Int,
+    objective            : Objective[V],
     allowChildExpansion  : S => Boolean,
     evaluate             : Option[S => V],
     generateChildren     : S => Array[(S, Option[A])],
@@ -54,7 +56,7 @@ object GenericPedrosoReiExpansion {
               }.
               take(maxExpandPerIteration).
               map { case (child: BanditChild[S, A, V], index: Int) =>
-                (BanditChild.promote(child, evaluate, generateChildren), index)
+                (BanditChild.promote(child, evaluate, generateChildren, objective), index)
               }
 
           // remove expanded children from parent by array index

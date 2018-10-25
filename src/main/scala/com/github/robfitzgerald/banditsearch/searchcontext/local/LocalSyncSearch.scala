@@ -7,9 +7,11 @@ import cats.implicits._
 
 import com.github.robfitzgerald.banditsearch.Objective
 import com.github.robfitzgerald.banditsearch.banditnode.{BanditParent, SearchState}
+import com.github.robfitzgerald.banditsearch.pedrosorei.Payload
 import com.github.robfitzgerald.banditsearch.sampler.implicits._
-import com.github.robfitzgerald.banditsearch.sampler.pedrosorei.{UCBPedrosoReiGlobals, UCBPedrosoReiSampler}
-import com.github.robfitzgerald.banditsearch.searchcontext.{GenericPedrosoReiExpansion, GenericPedrosoReiSynchronization}
+import com.github.robfitzgerald.banditsearch.sampler.pedrosorei.{UCBPedrosoReiGlobalState, UCBPedrosoReiGlobals, UCBPedrosoReiMetaParameters, UCBPedrosoReiSampler}
+import com.github.robfitzgerald.banditsearch.searchcontext.GenericPedrosoReiCollect.CollectResult
+import com.github.robfitzgerald.banditsearch.searchcontext.{GenericPedrosoReiCollect, GenericPedrosoReiExpansion, GenericPedrosoReiPartitionRebalancing, GenericPedrosoReiSynchronization}
 import spire.algebra.Trig
 import spire.math.Numeric
 
@@ -20,11 +22,16 @@ import spire.math.Numeric
 class LocalSyncSearch[S, A, V: Numeric : Trig](
   simulate              : S => S,
   evaluate              : S => V,
-  generateChildren      : S => Array[(S, Option[A])],
   objective             : Objective[V],
+  generateChildren      : S => Array[(S, Option[A])],
+  rankingPolicy         : Payload[S, A, V] => Double,
   allowChildExpansion   : S => Boolean,
+  activatedPayloadLimit : Int,
+  totalPayloadCapacity  : Int,
+  startFrontier         : List[(S, Option[A])] = List.empty[(S, Option[A])],
   synchronize           : Boolean = true,
-  explorationCoefficient: Double = math.sqrt(2),
+  explorationCoefficient: Int => Double = (_: Int) => math.sqrt(2),
+  explorationUpdate     : Option[Double => Double] = None,
   observationsThreshold : Int = 30,
   rewardThreshold       : Double = 0.5D,
   maxExpandPerIteration : Int = 2
@@ -33,19 +40,25 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
   val Sampler: UCBPedrosoReiSampler[S, A, V] = UCBPedrosoReiSampler[S, A, V](simulate, evaluate, objective)
   implicit val objectiveImplicit: Objective[V] = objective
 
-  type Payload = (BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]])
-
-  def run(iterationsMax: Int, durationMax: Long, samplesPerIteration: Int): (S, V, Double, Int) = {
+  def run(iterationsMax: Int, durationMax: Long, samplesPerIteration: Int): Option[CollectResult[S, V]] = {
     val stopTime: Long = System.currentTimeMillis() + durationMax
 
-    val expandFunction: Payload => List[Payload] =
+    val expandFunction: Payload[S, A, V] => List[Payload[S, A, V]] =
       GenericPedrosoReiExpansion.expand[List, S, A, V](
         observationsThreshold,
         rewardThreshold,
         maxExpandPerIteration,
+        objective,
         allowChildExpansion,
         Some(evaluate),
         generateChildren
+      )
+
+    val rebalanceFunction: List[Payload[S, A, V]] => List[Payload[S, A, V]] =
+      GenericPedrosoReiPartitionRebalancing.rebalance[List, S, A, V](
+        activatedPayloadLimit,
+        totalPayloadCapacity,
+        rankingPolicy
       )
 
     /**
@@ -56,7 +69,7 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
       * @return the final frontier.. and number of iterations
       */
     @tailrec
-    def _run(frontier: List[this.Payload], it: Int = 1): (List[this.Payload], Int) = {
+    def _run(frontier: List[Payload[S, A, V]], it: Int = 1): (List[Payload[S, A, V]], Int) = {
 
       if (it > iterationsMax || System.currentTimeMillis() > stopTime) (frontier, it - 1)
       else {
@@ -64,12 +77,12 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
         ///////////////////////
         // 1 --- sample step //
         ///////////////////////
-        val sampledFrontier: List[this.Payload] =
+        val sampledFrontier: List[Payload[S, A, V]] =
         frontier.
           map { payload =>
             val (parent, globals) = payload
             if (parent.searchState == SearchState.Activated) {
-              val updatedPayload: this.Payload = Sampler.run[Id]((parent, globals), samplesPerIteration)
+              val updatedPayload: Payload[S, A, V] = Sampler.run[Id]((parent, globals), samplesPerIteration)
               updatedPayload
             } else payload
           }
@@ -80,7 +93,7 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
           ////////////////////////////
           // 2 --- synchronize step //
           ////////////////////////////
-          val syncedFrontier: List[this.Payload] =
+          val syncedFrontier: List[Payload[S, A, V]] =
           if (!synchronize) sampledFrontier
           else GenericPedrosoReiSynchronization.synchronize[List, S, A, V](sampledFrontier, Sampler)
 
@@ -90,37 +103,54 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
             ///////////////////////
             // 3 --- expand step //
             ///////////////////////
-            val expandedFrontier: List[this.Payload] =
-              syncedFrontier.
-                flatMap { payload =>
-                  if (payload._1.searchState != SearchState.Activated) {
-                    List(payload)
-                  } else {
-                    expandFunction(payload)
-                  }
+            val expandedFrontier: List[Payload[S, A, V]] =
+            syncedFrontier.
+              flatMap { payload =>
+                if (payload._1.searchState != SearchState.Activated) {
+                  List(payload)
+                } else {
+                  expandFunction(payload)
                 }
+              }
 
             if (it > iterationsMax || System.currentTimeMillis() > stopTime) (expandedFrontier, it)
             else {
 
-              // todo: partition pruning
+              //////////////////////////
+              // 4 --- rebalance step //
+              //////////////////////////
+              val rebalancedFrontier: List[Payload[S, A, V]] = rebalanceFunction(expandedFrontier)
 
-              _run(expandedFrontier, it + 1)
+              _run(rebalancedFrontier, it + 1)
             }
           }
         }
       }
     }
 
-    // todo: generate top payload
+    // build starting payloads based on user-provided exploration coefficient function and objective
+    val startFrontierPayloads: List[Payload[S, A, V]] =
+      startFrontier.
+        zipWithIndex.
+          map{ case ((state, action), index: Int) =>
+            val newParent = BanditParent.frontierPayload(
+              state,
+              action,
+              Some(evaluate),
+              generateChildren,
+              objective
+            )
+            val newGlobalState = UCBPedrosoReiGlobalState[S, A, V](objective)
+            val newGlobalMeta = UCBPedrosoReiMetaParameters(explorationCoefficient(index))
+          (newParent, Some(UCBPedrosoReiGlobals[S, A, V](newGlobalState, newGlobalMeta)))
+        }
 
-    val (searchResult, iterationsExecuted) = _run(List())
+    val (searchResult, iterationsExecuted) = _run(startFrontierPayloads)
 
-    // todo: evaluate result
-
-    ???
+    GenericPedrosoReiCollect.collect(searchResult, objective)
   }
 }
 
 object LocalSyncSearch {
+
 }
