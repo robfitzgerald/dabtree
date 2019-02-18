@@ -17,7 +17,7 @@ trait CanSample [State, Action, Value, Globals] {
   //////////////////////////////////////////////////////////////////////////////
   // user-provided members. these provide the problem domain we are searching in
 
-  type Reward = Double
+//  type Reward = Double
 
   /**
     * given a state, simulate state transitions to a terminal state
@@ -53,7 +53,7 @@ trait CanSample [State, Action, Value, Globals] {
     * update in-place the global sampler state
     * @return ()
     */
-  def updateSamplerState: (Globals, Value) => Globals
+  def updateSamplerState: (Globals, State, Action, Value) => Globals
 
   /**
     * selects the index of a random child
@@ -65,5 +65,5 @@ trait CanSample [State, Action, Value, Globals] {
     * computes the reward based on the current stats, global variables, and parent observations
     * @return a reward value for this node.
     */
-  def rewardFunction[StatsType[_]](stats: StatsType[Value], globals: Globals, pVisits: Int)(implicit evidence: MCTSStats[StatsType[Value], Value]): Reward
+  def rewardFunction[StatsType[_]](stats: StatsType[Value], globals: Globals, pVisits: Int)(implicit evidence: MCTSStats[StatsType[Value], Value]): Double
 }

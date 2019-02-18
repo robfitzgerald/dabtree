@@ -43,16 +43,18 @@ object GenericPedrosoReiPartitionRebalancing {
     val rebalancedNonCancelledPayloads: Chain[Payload[S, A, V]] = updateSearchNodeState[S, A, V](nonCancelledRankedPayloads, activatedPayloadLimit, payloadCapacity)
 
     // reassemble rebalanced nodes in original container type
-    (cancelledPayloads ++ rebalancedNonCancelledPayloads).foldLeft(MonoidK[G].empty[Payload[S, A, V]]) { (acc, b) =>
+    val result = (cancelledPayloads ++ rebalancedNonCancelledPayloads).foldLeft(MonoidK[G].empty[Payload[S, A, V]]) { (acc, b) =>
       val rhs: G[Payload[S, A, V]] = Monad[G].pure(b)
       MonoidK[G].combineK(acc, rhs)
     }
+
+    result
   }
 
   def updateSearchNodeState[S, A, V: Numeric](
-    nonCancelledPayloads: SortedSet[(Payload[S, A, V], Double)],
+    nonCancelledPayloads : SortedSet[(Payload[S, A, V], Double)],
     activatedPayloadLimit: Int,
-    payloadCapacity     : Int
+    payloadCapacity      : Int
   ): Chain[Payload[S, A, V]] = {
 
     // todo: sort and re-label nonCancelled payloads
@@ -65,7 +67,7 @@ object GenericPedrosoReiPartitionRebalancing {
         val cancelledRemainder: Chain[Payload[S, A, V]] = {
           sorted.foldLeft(Chain.empty[Payload[S, A, V]]) { (acc, evaluatedPayload) =>
             val (parent, _) = evaluatedPayload._1
-            val cancelledParent = parent.copy(searchState = SearchState.Cancelled)
+            val cancelledParent = parent.cancel()
             acc :+ (cancelledParent, None)
           }
         }
@@ -76,8 +78,8 @@ object GenericPedrosoReiPartitionRebalancing {
           case Some((payload: Payload[S, A, V], _: Double)) =>
             val (parent, globals) = payload
             val updatedParent =
-              if (solution.size < activatedPayloadLimit) parent.copy(searchState = SearchState.Activated)
-              else parent.copy(searchState = SearchState.Suspended)
+              if (solution.size < activatedPayloadLimit) parent.activate()
+              else parent.suspend()
 
             _update(sorted.tail, solution :+ (updatedParent, globals))
         }

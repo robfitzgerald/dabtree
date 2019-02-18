@@ -35,24 +35,31 @@ object GenericPedrosoReiExpansion {
     evaluate             : Option[S => V],
     generateChildren     : S => Array[(S, Option[A])],
   )(payload: Payload[S,A,V]): G[Payload[S,A,V]] = {
-    if (payload._1.mctsStats.observations < observationsThreshold) Monad[G].pure(payload)
-    else if (!allowChildExpansion(payload._1.state)) Monad[G].pure(payload)
+
+    val (banditParent, optionGlobals) = payload
+
+    val allowExpansion = allowChildExpansion(banditParent.state)
+
+    if (banditParent.mctsStats.observations < observationsThreshold) Monad[G].pure(payload)
+    else if (!allowExpansion) {
+      Monad[G].pure(payload)
+    }
     else {
-      payload._2 match {
+      optionGlobals match {
         case None => Monad[G].pure(payload)
         case Some(globals) =>
 
           // select expandable children, based on reward. promote them. retain their array index.
           val expandedChildren: Array[(BanditParent[S, A, V], Int)] =
-            payload._1.
+            banditParent.
               children.
               zipWithIndex.
               filter { case (child: BanditChild[S, A, V], _) =>
                 child.mctsStats.observations > observationsThreshold &&
                 child.reward >= rewardThreshold
               }.
-              sortBy {
-                -_._1.reward
+              sortBy { case (child: BanditChild[S, A, V], _) =>
+                - child.reward
               }.
               take(maxExpandPerIteration).
               map { case (child: BanditChild[S, A, V], index: Int) =>
@@ -62,9 +69,13 @@ object GenericPedrosoReiExpansion {
           // remove expanded children from parent by array index
           val updatedParent: BanditParent[S, A, V] = {
             val updatedChildren: Array[BanditChild[S, A, V]] = {
-              val temp = payload._1.children.toBuffer
+              val temp = banditParent.children.toBuffer
+              val childrenToRemove: Array[Int] =
+                expandedChildren.
+                  map { case (_, index: Int) => index }.
+                  sortBy { -_ }
               for {
-                expandedIndex <- expandedChildren.map { case (_, index: Int) => index }.reverse
+                expandedIndex <- childrenToRemove
               } {
                 temp.remove(expandedIndex)
               }
@@ -73,12 +84,12 @@ object GenericPedrosoReiExpansion {
 
             // cancel the parent from searching if all of its children have been expanded
             if (updatedChildren.length == 0) {
-              payload._1.copy(
+              banditParent.copy(
                 children = updatedChildren,
                 searchState = SearchState.Cancelled
               )
             } else {
-              payload._1.copy(
+              banditParent.copy(
                 children = updatedChildren
               )
             }

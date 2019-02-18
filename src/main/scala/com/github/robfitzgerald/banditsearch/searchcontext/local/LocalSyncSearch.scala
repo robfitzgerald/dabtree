@@ -74,24 +74,23 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
       if (it > iterationsMax || System.currentTimeMillis() > stopTime) (frontier, it - 1)
       else {
 
-        println(s"sampling frontier of size ${frontier.size}")
+//        println(s"sampling frontier of size ${frontier.size}")
         ///////////////////////
         // 1 --- sample step //
         ///////////////////////
         val sampledFrontier: List[Payload[S, A, V]] =
           frontier.
-            map { payload =>
-              val (parent, globals) = payload
+            map { case (parent, globals) =>
               if (parent.searchState == SearchState.Activated) {
                 val updatedPayload: Payload[S, A, V] = Sampler.run[Id]((parent, globals), samplesPerIteration)
                 print("^")
                 updatedPayload
               } else {
                 print("_")
-                payload
+                (parent, globals)
               }
             }
-        println()
+        print("\n")
 
         if (it > iterationsMax || System.currentTimeMillis() > stopTime) (sampledFrontier, it)
         else {
@@ -127,9 +126,9 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
               //////////////////////////
               val rebalancedFrontier: List[Payload[S, A, V]] = rebalanceFunction(expandedFrontier)
 
-              println(s"-- end of iteration $it --")
-              println(s"${rebalancedFrontier.mkString("\n")}")
-              println()
+//              println(s"-- end of iteration $it --")
+//              println(s"${rebalancedFrontier.mkString("\n")}")
+//              println()
 
               _run(rebalancedFrontier, it + 1)
             }

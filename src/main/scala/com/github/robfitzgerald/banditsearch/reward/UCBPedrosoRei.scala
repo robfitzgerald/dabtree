@@ -5,33 +5,32 @@ import spire.implicits._
 import spire.algebra._
 
 object UCBPedrosoRei {
+
   def rewardFunction[V : Numeric : Trig](gBest: V, gWorst: V, lBest: V, lAvg: V, pVisits: Int, cVisits: Int, Cp: Double): Double = {
-    if (pVisits == 0) 0D
-    else {
 
-      val exploitation: Double = {
-        if (gWorst == gBest) 0D
-        else {
-          pedrosoReiXTerm(gBest, gWorst, lBest)
-        }
+    val exploitation: Double = {
+      if (gWorst === gBest) 0D
+      else {
+        pedrosoReiXTerm(gBest, gWorst, lBest)
       }
-
-      val exploration = {
-        if (Cp == 0) 0D
-        else if (pVisits == 0) 0D
-        else if (cVisits == 0) Double.PositiveInfinity
-        else if (gWorst == gBest) Double.PositiveInfinity
-        else {
-
-          val xbar = pedrosoReiXTerm(gBest, gWorst, lAvg)
-          val E = Cp * math.sqrt(math.log(pVisits) / cVisits)
-
-          xbar * E
-        }
-      }
-
-      exploitation + exploration
     }
+
+    val exploration = {
+      if (Cp == 0) 0D
+      else if (cVisits === 0) Double.PositiveInfinity
+      else if (pVisits === 0) 0D
+      else if (gWorst === gBest) Double.PositiveInfinity
+      else {
+
+        val xbar = pedrosoReiXTerm(gBest, gWorst, lAvg)
+        val E = Cp * math.sqrt(math.log(pVisits) / cVisits)
+
+        xbar * E
+      }
+    }
+
+    exploitation + exploration
+
   }
 
   /**

@@ -15,6 +15,7 @@ object GenericPedrosoReiCollect {
     bestState: Option[S] = None,
     bestCost: Option[V] = None,
     payloadStateTransitions: Int = 0,
+    payloadsCount: Int = 0,
     activatedCount: Int = 0,
     suspendedCount: Int = 0,
     cancelledCount: Int = 0,
@@ -23,10 +24,17 @@ object GenericPedrosoReiCollect {
     def add (stats: SearchStats, samples: Int): CollectResult[S, V] = {
       this.copy(
         payloadStateTransitions = this.payloadStateTransitions + stats.totalStateTransitions,
+        payloadsCount = this.payloadsCount + 1,
         activatedCount = this.activatedCount + stats.activated,
         suspendedCount = this.suspendedCount + stats.suspended,
-        cancelledCount = this.cancelledCount + stats.cancelled
+        cancelledCount = this.cancelledCount + stats.cancelled,
+        samples = this.samples + samples
       )
+    }
+
+    override def toString: String = bestCost match {
+      case None => s"nothing found... payloads: $payloadsCount act: $activatedCount sus: $suspendedCount can: $cancelledCount samples: $samples"
+      case Some(cost) => s"bestCost: $cost payloads: $payloadsCount act: $activatedCount sus: $suspendedCount can: $cancelledCount samples: $samples"
     }
   }
   def collect[G[_] : Foldable, S, A, V : Numeric](payloads: G[Payload[S, A, V]], objective: Objective[V]): Option[CollectResult[S, V]] = {
@@ -50,7 +58,7 @@ object GenericPedrosoReiCollect {
         if (objective.isMoreOptimalThan(accumulatorCost, bestSimulation)) accStatsUpdate
         else {
 
-          // update the best solution and best cost
+          // update the best solution and best cost only if this payload is more optimal than accumulator
           {
             for {
               globals <- globalsOption

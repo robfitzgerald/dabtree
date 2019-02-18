@@ -20,9 +20,7 @@ object GenericPedrosoReiSynchronization {
 
     val allActiveGlobals: FTransformer[UCBPedrosoReiGlobalState[S, A, V]] =
       for {
-        payload <- OptionT(payloads.map {
-          _._2
-        })
+        payload <- OptionT(payloads.map { _._2 })
       } yield {
         payload.state
       }

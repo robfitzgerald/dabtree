@@ -31,6 +31,33 @@ case class BanditParent[S, A, V: Numeric](
 ) extends BanditNode[S, A, V, Double] with HasChildren[S, A, V, Double] {
   override type Child = BanditChild[S, A, V]
 
+  def activate(): BanditParent[S, A, V] = {
+    this.copy(
+      searchState = SearchState.Activated,
+      searchStats = this.searchStats.copy(
+        activated = this.searchStats.activated + 1
+      )
+    )
+  }
+
+  def suspend(): BanditParent[S, A, V] = {
+    this.copy(
+      searchState = SearchState.Suspended,
+      searchStats = this.searchStats.copy(
+        suspended = this.searchStats.suspended + 1
+      )
+    )
+  }
+
+  def cancel(): BanditParent[S, A, V] = {
+    this.copy(
+      searchState = SearchState.Cancelled,
+      searchStats = this.searchStats.copy(
+        cancelled = this.searchStats.cancelled + 1
+      )
+    )
+  }
+
   def update(observation: V, rewardUpdate: Double): Unit = {
     reward = rewardUpdate
     mctsStats = mctsStats.update(observation)
@@ -39,9 +66,9 @@ case class BanditParent[S, A, V: Numeric](
   override def toString: String = {
     costBound match {
       case None =>
-        f"$searchState(cb: ? - ch: ${children.length} $mctsStats - reward $reward)"
+        f"$searchState node with state: $state - num children: ${children.length} - reward $reward\n$mctsStats"
       case Some(costBoundValue) =>
-        f"$searchState(cb: $costBoundValue - ch: ${children.length} $mctsStats - reward $reward)"
+        f"$searchState with state: $state - cost bound: $costBoundValue - num children: ${children.length} - reward $reward\n$mctsStats"
     }
   }
 }

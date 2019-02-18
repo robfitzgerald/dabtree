@@ -1,6 +1,6 @@
 package com.github.robfitzgerald.banditsearch.sampler.pedrosorei
 
-import cats.Monad
+//import cats.Monad
 
 import com.github.robfitzgerald.banditsearch.Objective
 import com.github.robfitzgerald.banditsearch.banditnode._
@@ -35,8 +35,8 @@ class UCBPedrosoReiSampler[S, A, V : Numeric : Trig](
     val _ = stats.update(observation)
   }
 
-  final def updateSamplerState: (UCBPedrosoReiGlobals[S, A, V], V) => UCBPedrosoReiGlobals[S, A, V] = (currentGlobals, observation) => {
-    val updatedGlobalState = currentGlobals.state.update(observation, objective)
+  final def updateSamplerState: (UCBPedrosoReiGlobals[S, A, V], S, A, V) => UCBPedrosoReiGlobals[S, A, V] = (currentGlobals, simulatedState, chosenAction, observation) => {
+    val updatedGlobalState = currentGlobals.state.update(simulatedState, chosenAction, observation, objective)
     currentGlobals.copy(state = updatedGlobalState)
   }
 
@@ -44,7 +44,7 @@ class UCBPedrosoReiSampler[S, A, V : Numeric : Trig](
   // reward function should be generic to mutable/immutable types
   // because rewardFunction itself does not mutate state.
 
-  final def rewardFunction[StatsType[_]](stats: StatsType[V], globals: UCBPedrosoReiGlobals[S, A, V], pVisits: Int)(implicit evidence: MCTSStats[StatsType[V], V]): Reward = {
+  final def rewardFunction[StatsType[_]](stats: StatsType[V], globals: UCBPedrosoReiGlobals[S, A, V], pVisits: Int)(implicit evidence: MCTSStats[StatsType[V], V]): Double = {
     UCBPedrosoRei.rewardFunction[V](
       globals.state.gBest,
       globals.state.gWorst,

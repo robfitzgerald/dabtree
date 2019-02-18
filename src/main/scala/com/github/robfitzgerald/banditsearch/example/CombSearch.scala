@@ -12,9 +12,11 @@ trait CombSearch {
   type Value = Double
 
   // problem description
-  def realSolution: State
-  def minValue: Value = 0
-  def maxValue: Value = math.sqrt(realSolution.size.toDouble)
+  def minValue: Value
+  def maxValue: Value
+  def numChildren: Int
+  def problemSize: Int
+  def rankingPolicy: Payload[State, Action, Value] => Double
 
   // algorithm parameters
   def activatedPayloadLimit: Int
@@ -22,11 +24,20 @@ trait CombSearch {
 
   def possibleValues: Vector[Double] = Vector(0.00, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00)
 
-  //
   final def vectorSize: Int = realSolution.size
   final def expandLimit: Int = if (vectorSize <= 6) vectorSize / 2 else vectorSize - 3
 
   val random = spire.random.rng.Cmwc5()
+
+  /**
+    * The Solution that this combinatorial search instance is looking for
+    */
+  val realSolution: State = {
+    for {
+      i <- 1 to problemSize
+      n = possibleValues(random.nextInt(possibleValues.size))
+    } yield n
+  }.toVector
 
   // randomly fill our vector
   final val simulate: State => State = (state: State) => {
@@ -40,7 +51,7 @@ trait CombSearch {
     }
   }
 
-  // evaluate as the euclidian distance, which we wish to minimize
+  // evaluate as the Euclidian distance, which we wish to minimize
   final val evaluate: State => Value = (state: State) => {
     val sum: Value = state.
       zip(realSolution).
@@ -53,19 +64,21 @@ trait CombSearch {
   final val generateChildren: State => Array[(State, Option[Action])] = (state: State) => {
     {
       for {
-        n <- possibleValues
-      } yield (state :+ n, Some(n))
+        n <- 1 to numChildren
+        ratio = n.toDouble / numChildren
+      } yield (state :+ ratio, Some(ratio))
     }.toArray
-  }
-
-  // rank by reward
-  final val rankingPolicy: Payload[State, Action, Value] => Double = (payload: Payload[State, Action, Value]) => {
-    payload._1.reward
   }
 
   // allow up to the user-provided expand limit
   final val allowChildExpansion: State => Boolean = (state: State) => {
-    state.size < expandLimit
+    val expLim = expandLimit
+    val canExpand = state.size < expLim
+    if (canExpand) {
+      true
+    } else {
+      false
+    }
   }
 
   def startFrontier: List[(State, Option[Action])] = List((Vector.empty[Double], Option.empty[Action]))

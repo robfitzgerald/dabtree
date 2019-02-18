@@ -7,10 +7,29 @@ import spire.math.Numeric
 
 case class UCBPedrosoReiGlobalState [S, A, V : Numeric](gBest: V, gWorst: V, bestSolution: Option[S] = None, bestAction: Option[A] = None, bestCost: Option[V] = None) {
 
-  def update(o: V, objective: Objective[V]): UCBPedrosoReiGlobalState[S,A,V] =
-    if (objective.isMoreOptimalThan(o, gBest) && objective.isMoreOptimalThan(gWorst, o)) this.copy(gBest = o, gWorst = o)
-    else if (objective.isMoreOptimalThan(o, gBest)) this.copy(gBest = o)
-    else if (objective.isMoreOptimalThan(gWorst, o)) this.copy(gWorst = o)
+  def update(s: S, a: A, o: V, objective: Objective[V]): UCBPedrosoReiGlobalState[S,A,V] =
+    if (objective.isMoreOptimalThan(o, gBest) && objective.isMoreOptimalThan(gWorst, o)) {
+      this.copy(
+        gBest = o,
+        gWorst = o,
+        bestSolution = Some(s),
+        bestAction = Some(a),
+        bestCost = Some(o)
+      )
+    }
+    else if (objective.isMoreOptimalThan(o, gBest)) {
+      this.copy(
+        gBest = o,
+        bestSolution = Some(s),
+        bestAction = Some(a),
+        bestCost = Some(o)
+      )
+    }
+    else if (objective.isMoreOptimalThan(gWorst, o)) {
+      this.copy(
+        gWorst = o
+      )
+    }
     else this
 
   def combine (that: UCBPedrosoReiGlobalState[S,A,V], objective: Objective[V]): UCBPedrosoReiGlobalState[S,A,V] = {

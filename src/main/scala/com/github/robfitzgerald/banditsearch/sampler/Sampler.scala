@@ -20,17 +20,18 @@ object Sampler extends SamplerOps {
     simulate          : S => S,
     evaluate          : S => V,
     updateStats       : (MCTSStatsMutableImpl[V], V) => Unit,
-    updateSamplerState: (SamplerState, V) => SamplerState,
+    updateSamplerState: (SamplerState, S, A, V) => SamplerState,
     rewardFunction    : (MCTSStatsMutableImpl[V], SamplerState, Int) => Double
   ): F[(BanditParent[S,A,V], SamplerState)] = {
     Monad[F].pure {
 
       // convert our data structures from immutable to mutable structures
-      var currentSamplerState: SamplerState = samplerState
+      var updatedSamplerState: SamplerState = samplerState
       var parentReward: Double = parent.reward
       val parentStats: MCTSStatsMutableImpl[V] = parent.mctsStats.toMutable
       val childrenRewards: collection.mutable.Buffer[Double] = parent.children.map{ _.reward }.toBuffer
       val childrenStats: Array[MCTSStatsMutableImpl[V]] = parent.children.map { _.mctsStats.toMutable }
+      val childrenActions: IndexedSeq[A] = parent.children.flatMap { _.action }
       val childrenStates: IndexedSeq[S] = parent.children.map { _.state }
 
       // perform samples
@@ -38,17 +39,19 @@ object Sampler extends SamplerOps {
 
         // basic MCTS sampling
         val selectedChildIndex: Int = randomSelection(parent)
+        val selectedAction: A = childrenActions(selectedChildIndex)
         val selectedState: S = childrenStates(selectedChildIndex)
-        val simulation: S = simulate(selectedState)
-        val cost: V = evaluate(simulation)
+        val simulatedState: S = simulate(selectedState)
+        val cost: V = evaluate(simulatedState)
 
         // perform update on child and parent (globals via immutable semantics, parent/child via mutable)
         val selectedChildStats = childrenStats(selectedChildIndex)
-        currentSamplerState = updateSamplerState(currentSamplerState, cost)
+        updatedSamplerState = updateSamplerState(updatedSamplerState, simulatedState, selectedAction, cost)
         updateStats(selectedChildStats, cost)
         updateStats(parentStats, cost)
-        childrenRewards(selectedChildIndex) = rewardFunction(selectedChildStats, currentSamplerState, parentStats.observations)
-        parentReward = rewardFunction(childrenStats(selectedChildIndex), currentSamplerState, 0)
+        val childRewardUpdate = rewardFunction(selectedChildStats, updatedSamplerState, parentStats.observations)
+        childrenRewards.update(selectedChildIndex, childRewardUpdate)
+        parentReward = rewardFunction(parentStats, updatedSamplerState, 0)
       }
 
       // back to immutable structures. update all children with sampling results
@@ -69,7 +72,7 @@ object Sampler extends SamplerOps {
         children = updatedChildren
       )
 
-      (updatedParent, currentSamplerState)
+      (updatedParent, updatedSamplerState)
     }
   }
 }
