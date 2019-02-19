@@ -1,7 +1,10 @@
 package com.github.robfitzgerald.dabtree.example
 
 import com.github.robfitzgerald.DefaultTest
+import com.github.robfitzgerald.dabtree.Ranking
+import com.github.robfitzgerald.dabtree.banditnode.BanditParent
 import com.github.robfitzgerald.dabtree.pedrosorei.Payload
+import com.github.robfitzgerald.dabtree.sampler.pedrosorei.UCBPedrosoReiGlobals
 
 class CombSearchTests extends DefaultTest {
   "CombTest" when {
@@ -22,18 +25,16 @@ class CombSearchTests extends DefaultTest {
         def maxDurationSeconds: Int = 1
         def maxDuration: Long = 1000L * maxDurationSeconds
 
-        // rank by reward - simple
-//        final val rankingPolicy: Payload[State, Action, Value] => Double =
-//          (payload: Payload[State, Action, Value]) => {
-//            payload._1.reward
-//          }
 
-        // rank by reward and depth - prefer keeping deeper tree nodes active
-        final def rankingPolicy: Payload[State, Action, Value] => Double =
-          (payload: Payload[State, Action, Value]) => {
-            payload._1.reward +
-            payload._1.state.size.toDouble / problemSize
-          }
+//         rank by reward and depth. prefer keeping deeper tree nodes active.
+//         is possible when the state is represented as a countable collection.
+//        final def rankingPolicy: Payload[State, Action, Value] => Double =
+//          (payload: Payload[State, Action, Value]) => {
+//            payload._1.reward +
+//            payload._1.state.size.toDouble / problemSize
+//          }
+//        override def rankingPolicy = Ranking.GenericRanking
+        override def rankingPolicy: Payload[State, Action, Value] => Double = Ranking.CostLowerBoundedRanking
 
         runSearch(maxIterations, maxDuration, samplesPerIteration) match {
           case None =>
@@ -43,6 +44,8 @@ class CombSearchTests extends DefaultTest {
               case None =>
                 fail()
               case Some(bestState) =>
+//                println("Search Result")
+//                println(result)
 //                println("Best Solution Found:")
 //                println(bestState)
 //                println("Real Solution:")
