@@ -19,15 +19,19 @@ object CombinatorialSearchTrialRunner extends CommandApp(
     val actOption = Opts.option[Int]("act", help = "max number of active payloads per iteration").withDefault(defaultActivePayloads)
     val payloadsOption = Opts.option[Int]("pl", help = "max number of active + suspended payloads per iteration").withDefault(defaultActivePayloads * 2)
     val trialsOption = Opts.option[Int]("trials", help = "number of trials per configuration").withDefault(1)
-    val probSizeOption = Opts.option[Int]("pSize", help = "number of dimensions of the problem space").withDefault(10)
+    val probSizeOption = Opts.option[Int]("pSize", help = "number of dimensions of the problem space").withDefault(20)
 
     (scOption, actOption, payloadsOption, trialsOption, probSizeOption).mapN { (sc, act, pl, trials, probSize) =>
-      new CombSearchExperiment(sc, act, pl, trials, probSize).run()
+      println(s"run with args: --sc=$sc --act=$act --pl=$pl --trials=$trials --pSize=$probSize")
+      val scRange = 1 to 50 by 1
+      val actRange = 1 to 50 by 1
+      new CombSearchExperiment(scRange, act to act, pl, trials, probSize).run()
+      new CombSearchExperiment(sc to sc, actRange, pl, trials, probSize).run()
     }
   }
 )
 
-class CombSearchExperiment (sc: Int, act: Int, pLimit: Int, numTrials: Int, problemDimensionality: Int) {
+class CombSearchExperiment (scRange: Range, actRange: Range, pLimit: Int, numTrials: Int, problemDimensionality: Int) {
 
   case class Stats(
     sumCost: Double = 0.0,
@@ -64,6 +68,8 @@ class CombSearchExperiment (sc: Int, act: Int, pLimit: Int, numTrials: Int, prob
         //      ("clbtreedepth", CombSearch.CostBoundAndTreeDepthPolicy(problemSizeParam)),
         //      ("clb*treedepth", CombSearch.CostBoundTimesTreeDepthPolicy(problemSizeParam))
       )
+      sc <- scRange
+      act <- actRange
       numChildrenParam = 11 // step by .25 or .1
       maxIterations = 100
       maxDurationSeconds = 5
