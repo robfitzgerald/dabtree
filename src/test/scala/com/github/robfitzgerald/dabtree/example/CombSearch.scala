@@ -1,9 +1,9 @@
 package com.github.robfitzgerald.dabtree.example
 
-import com.github.robfitzgerald.dabtree.Objective
 import com.github.robfitzgerald.dabtree.pedrosorei.Payload
 import com.github.robfitzgerald.dabtree.searchcontext.GenericPedrosoReiCollect.CollectResult
 import com.github.robfitzgerald.dabtree.searchcontext.local.LocalSyncSearch
+import com.github.robfitzgerald.dabtree.{Objective, Ranking}
 import spire.implicits._
 
 trait CombSearch {
@@ -98,5 +98,31 @@ trait CombSearch {
 
   final def runSearch(iterationsMax: Int, durationMax: Long, samplesPerIteration: Int): Option[CollectResult[State, Value]] = {
     localSyncSearch.run(iterationsMax, durationMax, samplesPerIteration)
+  }
+}
+
+object CombSearch {
+  def TreeDepthRankingPolicy(problemSize: Int): Payload[Vector[Double], Double, Double] => Double =
+    (payload: Payload[Vector[Double], Double, Double]) => {
+      val state: Vector[Double] = payload._1.state
+      state.size.toDouble / problemSize
+    }
+
+  def CostBoundAndTreeDepthPolicy(problemSize: Int): Payload[Vector[Double], Double, Double] => Double = {
+    val costLowerBounded = Ranking.CostLowerBoundedRanking[Vector[Double], Double, Double]
+    val treeDepth = TreeDepthRankingPolicy(problemSize)
+
+    payload: Payload[Vector[Double], Double, Double] => {
+      costLowerBounded(payload) + treeDepth(payload)
+    }
+  }
+
+  def CostBoundTimesTreeDepthPolicy(problemSize: Int): Payload[Vector[Double], Double, Double] => Double = {
+    val costLowerBounded = Ranking.CostLowerBoundedRanking[Vector[Double], Double, Double]
+    val treeDepth = TreeDepthRankingPolicy(problemSize)
+
+    payload: Payload[Vector[Double], Double, Double] => {
+      costLowerBounded(payload) * treeDepth(payload)
+    }
   }
 }

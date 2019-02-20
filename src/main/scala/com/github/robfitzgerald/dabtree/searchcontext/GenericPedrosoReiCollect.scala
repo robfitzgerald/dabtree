@@ -36,7 +36,13 @@ object GenericPedrosoReiCollect {
       case None => s"nothing found... payloads: $payloadsCount act: $activatedCount sus: $suspendedCount can: $cancelledCount samples: $samples"
       case Some(cost) => s"bestCost: $cost payloads: $payloadsCount act: $activatedCount sus: $suspendedCount can: $cancelledCount samples: $samples"
     }
+
+    def toCSVString: String = bestCost match {
+      case None => s",$payloadsCount,$activatedCount,$suspendedCount,$cancelledCount,$samples"
+      case Some(cost) => s"$cost,$payloadsCount,$activatedCount,$suspendedCount,$cancelledCount,$samples"
+    }
   }
+  def csvHeader: String = s"cost,payloadsCount,activatedCount,suspendedCount,cancelledCount,samples"
   def collect[G[_] : Foldable, S, A, V : Numeric](payloads: G[Payload[S, A, V]], objective: Objective[V]): Option[CollectResult[S, V]] = {
     if (payloads.isEmpty) None
     else {

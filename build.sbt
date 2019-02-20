@@ -13,9 +13,14 @@ scalacOptions ++= Seq(
   "-Xfatal-warnings"
 )
 
+// numerical library
 libraryDependencies += "org.typelevel" %% "spire" % "0.16.0"
+// functional abstractions
 libraryDependencies += "org.typelevel" %% "cats-core" % "1.6.0"
 
+// testing
+// command-line parsing
+libraryDependencies += "com.monovore" %% "decline" % "0.5.0" % "test"
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.4"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % "test"
 libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.4" % "test"
