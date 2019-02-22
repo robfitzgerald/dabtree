@@ -60,6 +60,7 @@ lazy val compilerOpts = Seq(
 val Spire = "org.typelevel" %% "spire" % "0.16.0"
 // functional abstractions
 val Cats = "org.typelevel" %% "cats-core" % "1.6.0"
+//val CatsEffect = "org.typelevel" %% "cats-effect" % "1.2.0"
 // command-line parsing
 val Decline = "com.monovore" %% "decline" % "0.5.0"
 

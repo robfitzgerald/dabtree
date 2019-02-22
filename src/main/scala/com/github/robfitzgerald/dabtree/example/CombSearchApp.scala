@@ -3,6 +3,7 @@ package com.github.robfitzgerald.dabtree.example
 import java.io.PrintWriter
 
 import scala.util.Try
+import scala.util.matching.Regex
 
 import cats.implicits._
 
@@ -16,6 +17,7 @@ object CombinatorialSearchTrialRunner extends CommandApp(
   header = "DABTree applied to a combinatorial search solving function approximation",
   main = {
 
+    val ctxOption = Opts.option[String]("ctx", help = "execution context 'local', 'localpar'").withDefault("local")
     val scOption = Opts.option[String]("sc", help = "sample confidence").withDefault("25")
     val defaultActivePayloads: Int = 17
     val actOption = Opts.option[String]("act", help = "max number of active payloads per iteration").withDefault(defaultActivePayloads.toString)
@@ -23,26 +25,18 @@ object CombinatorialSearchTrialRunner extends CommandApp(
     val trialsOption = Opts.option[Int]("trials", help = "number of trials per configuration").withDefault(1)
     val probSizeOption = Opts.option[Int]("pSize", help = "number of dimensions of the problem space").withDefault(20)
 
-    (scOption, actOption, payloadsOption, trialsOption, probSizeOption).mapN { (sc, act, pl, trials, probSize) =>
+    (ctxOption, scOption, actOption, payloadsOption, trialsOption, probSizeOption).mapN { (ctxString, sc, act, pl, trials, probSize) =>
       println(s"run with args: --sc=$sc --act=$act --pl=$pl --trials=$trials --pSize=$probSize")
-      val scRange = CombinatorialSearchTrialRunner.parseIntList(sc)
-      val actRange = CombinatorialSearchTrialRunner.parseIntList(act)
-      val plRange = CombinatorialSearchTrialRunner.parseIntList(pl)
-      new CombSearchExperiment(scRange, actRange, plRange, trials, probSize).run()
+      val scRange = CombSearchExperiment.parseNumbers(sc)
+      val actRange = CombSearchExperiment.parseNumbers(act)
+      val plRange = CombSearchExperiment.parseNumbers(pl)
+      val ctx = CombSearchExperiment.ExecutionContext(ctxString)
+      new CombSearchExperiment(ctx, scRange, actRange, plRange, trials, probSize).run()
     }
   }
-) {
-  def parseIntList(numList: String): Seq[Int] = Try {
-    numList.split(",").map{ _.toInt }
-  } match {
-    case util.Success(asNumeric) => asNumeric
-    case util.Failure(e) =>
-      println(s"couldn't parse integers from $numList")
-      Seq.empty[Int]
-  }
-}
+)
 
-class CombSearchExperiment (scRange: Seq[Int], actRange: Seq[Int], plRange: Seq[Int], numTrials: Int, problemDimensionality: Int) {
+class CombSearchExperiment (ctx: CombSearchExperiment.ExecutionContext, scRange: Seq[Int], actRange: Seq[Int], plRange: Seq[Int], numTrials: Int, problemDimensionality: Int) {
 
   case class Stats(
     sumCost: Double = 0.0,
@@ -172,4 +166,54 @@ class CombSearchExperiment (scRange: Seq[Int], actRange: Seq[Int], plRange: Seq[
   }
 }
 
+object CombSearchExperiment {
+
+  sealed trait ExecutionContext
+  object ExecutionContext {
+    case object Local extends ExecutionContext
+    case object LocalPar extends ExecutionContext
+    def apply(str: String): ExecutionContext = str match {
+      case "local" => Local
+      case "localpar" => LocalPar
+      case _ => throw new IllegalArgumentException(s"invalid execution context $str")
+    }
+  }
+
+  def parseNumbers(str: String): Seq[Int] = {
+    Try {
+      str.toInt
+    } match {
+      case util.Success(n) => Seq(n)
+      case util.Failure(_) =>
+        parseIntList(str) match {
+          case Some(intList) => intList
+          case None =>
+            parseRange(str) match {
+              case Some(range) => range
+              case None => throw new IllegalArgumentException(s"could not parse argument $str as numeric")
+            }
+        }
+    }
+  }
+
+  def parseIntList(numList: String): Option[Seq[Int]] = Try {
+    numList.split(",").map{ _.toInt }
+  } match {
+    case util.Success(asNumeric) => Some { asNumeric }
+    case util.Failure(_) => None
+  }
+
+  val RangeRegex: Regex = "(\\d+):(\\d+):(\\d+)".r
+
+  def parseRange(range: String): Option[Seq[Int]] = Try {
+    range match {
+      case RangeRegex(start, end, step) =>
+        start.toInt to end.toInt by step.toInt
+    }
+  } match {
+    case util.Success(rangeInterpreted) => Some { rangeInterpreted }
+    case util.Failure(_) => None
+  }
+
+}
 
