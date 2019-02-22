@@ -52,6 +52,12 @@ trait Objective[V] {
 
 object Objective {
 
+  // pre-rolled objectives for common numeric types
+  def MinimizeDouble(implicit ev: Order[Double]):     Objective[Double]     = Minimize[Double](0.0, Double.MaxValue)
+  def MaximizeDouble(implicit ev: Order[Double]):     Objective[Double]     = Maximize[Double](0.0, Double.MaxValue)
+  def MinimizeBigDecimal(implicit ev: Order[BigDecimal]): Objective[BigDecimal] = Minimize[BigDecimal](BigDecimal(0.0), BigDecimal("9" * 50))
+  def MaximizeBigDecimal(implicit ev: Order[BigDecimal]): Objective[BigDecimal] = Maximize[BigDecimal](BigDecimal(0.0), BigDecimal("9" * 50))
+
   case class Minimize[V: Order](optimalBounds: V, badBounds: V)(implicit val ordering: Order[V]) extends Objective[V] {
     require(ordering.compare(optimalBounds, badBounds) < 0, s"Minimize objective should have a 'optimalBounds' < 'badBounds' (since min is optimal), but instead $optimalBounds >= $badBounds.")
 

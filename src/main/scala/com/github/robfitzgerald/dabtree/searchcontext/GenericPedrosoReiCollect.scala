@@ -19,7 +19,8 @@ object GenericPedrosoReiCollect {
     activatedCount: Int = 0,
     suspendedCount: Int = 0,
     cancelledCount: Int = 0,
-    samples: Int = 0
+    samples: Int = 0,
+    iterations: Int = 0
   ) {
     def add (stats: SearchStats, samples: Int): CollectResult[S, V] = {
       this.copy(
@@ -36,11 +37,19 @@ object GenericPedrosoReiCollect {
       case None => s"nothing found... payloads: $payloadsCount act: $activatedCount sus: $suspendedCount can: $cancelledCount samples: $samples"
       case Some(cost) => s"bestCost: $cost payloads: $payloadsCount act: $activatedCount sus: $suspendedCount can: $cancelledCount samples: $samples"
     }
+
+    def toCSVString: String = bestCost match {
+      case None => s",$payloadsCount,$activatedCount,$suspendedCount,$cancelledCount,$samples"
+      case Some(cost) => s"$cost,$payloadsCount,$activatedCount,$suspendedCount,$cancelledCount,$samples"
+    }
   }
-  def collect[G[_] : Foldable, S, A, V : Numeric](payloads: G[Payload[S, A, V]], objective: Objective[V]): Option[CollectResult[S, V]] = {
+
+  def csvHeader: String = s"cost,payloadsCount,activatedCount,suspendedCount,cancelledCount,samples"
+
+  def collect[G[_] : Foldable, S, A, V : Numeric](payloads: G[Payload[S, A, V]], objective: Objective[V], iterations: Int): Option[CollectResult[S, V]] = {
     if (payloads.isEmpty) None
     else {
-      val collectResult = payloads.foldLeft(CollectResult[S, V]()) { (acc, payload) =>
+      val collectResult = payloads.foldLeft(CollectResult[S, V](iterations = iterations)) { (acc, payload) =>
         val (parent, globalsOption) = payload
 
         // adds search stats and samples to this accumulator

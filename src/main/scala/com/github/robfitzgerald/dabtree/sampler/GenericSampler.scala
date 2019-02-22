@@ -7,11 +7,11 @@ import com.github.robfitzgerald.dabtree.mctsstats.mutable.MCTSStatsMutableImpl
 import spire.implicits._
 import spire.math.Numeric
 
-trait Sampler [A, P] {
-  def run[F[_] : Monad](sampler: A, payload: P, iterations: Int): F[P]
+trait GenericSampler [A, P] {
+  def run[F[_] : Monad](sampler: A, payload: P, samples: Int): F[P]
 }
 
-object Sampler extends SamplerOps {
+object GenericSampler extends SamplerOps {
   def run[F[_] : Monad, S, A, V : Numeric, SamplerState](
     parent            : BanditParent[S,A,V],
     sampleIterations  : Int,
@@ -78,7 +78,7 @@ object Sampler extends SamplerOps {
 }
 
 trait SamplerOps {
-  implicit class SamplerTypeclass[A, P](sampler: A)(implicit evidence: Sampler[A, P]) {
-    def run[F[_] : Monad](payload: P, iterations: Int): F[P] = evidence.run(sampler, payload, iterations)
+  implicit class SamplerTypeclass[A, P](sampler: A)(implicit evidence: GenericSampler[A, P]) {
+    def run[F[_] : Monad](payload: P, samples: Int): F[P] = evidence.run(sampler, payload, samples)
   }
 }

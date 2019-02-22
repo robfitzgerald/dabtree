@@ -1,6 +1,7 @@
 package com.github.robfitzgerald.dabtree
 
 import com.github.robfitzgerald.dabtree.pedrosorei.Payload
+import com.github.robfitzgerald.dabtree.mctsstats.implicits._
 import spire.implicits._
 import spire.math.Numeric
 
@@ -18,7 +19,7 @@ object Ranking {
     * @tparam Value generic value type
     * @return an ordering rank, ascending
     */
-  final def GenericRanking[State, Action, Value]: Payload[State, Action, Value] => Double =
+  def RewardRanking[State, Action, Value]: Payload[State, Action, Value] => Double =
     (payload: Payload[State, Action, Value]) => {
       payload._1.reward
     }
@@ -31,7 +32,7 @@ object Ranking {
     * @tparam Value generic value type
     * @return an ordering rank, ascending
     */
-  final def CostLowerBoundedRanking[State, Action, Value : Numeric]: Payload[State, Action, Value] => Double =
+  def CostLowerBoundedRanking[State, Action, Value : Numeric]: Payload[State, Action, Value] => Double =
     (payload: Payload[State, Action, Value]) => {
       val (banditParent, globalsOption) = payload
 
@@ -53,4 +54,12 @@ object Ranking {
         case Some(ranking) => ranking
       }
     }
+
+  def LowerBoundedAndRewardRanking[State, Action, Value : Numeric]: Payload[State, Action, Value] => Double = {
+    val costLowerBounded = CostLowerBoundedRanking[State,Action,Value]
+    val generic = RewardRanking[State,Action,Value]
+    payload: Payload[State, Action, Value] => {
+      costLowerBounded(payload) + generic(payload)
+    }
+  }
 }
