@@ -2,6 +2,8 @@ package com.github.robfitzgerald.dabtree.example
 
 import java.io.PrintWriter
 
+import scala.util.Try
+
 import cats.implicits._
 
 import com.github.robfitzgerald.dabtree.Ranking
@@ -14,24 +16,33 @@ object CombinatorialSearchTrialRunner extends CommandApp(
   header = "DABTree applied to a combinatorial search solving function approximation",
   main = {
 
-    val scOption = Opts.option[Int]("sc", help = "sample confidence").withDefault(25)
-    val defaultActivePayloads: Int = 25
-    val actOption = Opts.option[Int]("act", help = "max number of active payloads per iteration").withDefault(defaultActivePayloads)
-    val payloadsOption = Opts.option[Int]("pl", help = "max number of active + suspended payloads per iteration").withDefault(defaultActivePayloads * 2)
+    val scOption = Opts.option[String]("sc", help = "sample confidence").withDefault("25")
+    val defaultActivePayloads: Int = 17
+    val actOption = Opts.option[String]("act", help = "max number of active payloads per iteration").withDefault(defaultActivePayloads.toString)
+    val payloadsOption = Opts.option[String]("pl", help = "max number of active + suspended payloads per iteration").withDefault((defaultActivePayloads * 2).toString)
     val trialsOption = Opts.option[Int]("trials", help = "number of trials per configuration").withDefault(1)
     val probSizeOption = Opts.option[Int]("pSize", help = "number of dimensions of the problem space").withDefault(20)
 
     (scOption, actOption, payloadsOption, trialsOption, probSizeOption).mapN { (sc, act, pl, trials, probSize) =>
       println(s"run with args: --sc=$sc --act=$act --pl=$pl --trials=$trials --pSize=$probSize")
-      val scRange = 1 to 50 by 1
-      val actRange = 1 to 50 by 1
-      new CombSearchExperiment(scRange, act to act, pl, trials, probSize).run()
-      new CombSearchExperiment(sc to sc, actRange, pl, trials, probSize).run()
+      val scRange = CombinatorialSearchTrialRunner.parseIntList(sc)
+      val actRange = CombinatorialSearchTrialRunner.parseIntList(act)
+      val plRange = CombinatorialSearchTrialRunner.parseIntList(pl)
+      new CombSearchExperiment(scRange, actRange, plRange, trials, probSize).run()
     }
   }
-)
+) {
+  def parseIntList(numList: String): Seq[Int] = Try {
+    numList.split(",").map{ _.toInt }
+  } match {
+    case util.Success(asNumeric) => asNumeric
+    case util.Failure(e) =>
+      println(s"couldn't parse integers from $numList")
+      Seq.empty[Int]
+  }
+}
 
-class CombSearchExperiment (scRange: Range, actRange: Range, pLimit: Int, numTrials: Int, problemDimensionality: Int) {
+class CombSearchExperiment (scRange: Seq[Int], actRange: Seq[Int], plRange: Seq[Int], numTrials: Int, problemDimensionality: Int) {
 
   case class Stats(
     sumCost: Double = 0.0,
@@ -70,6 +81,7 @@ class CombSearchExperiment (scRange: Range, actRange: Range, pLimit: Int, numTri
       )
       sc <- scRange
       act <- actRange
+      pLimit <- plRange
       numChildrenParam = 11 // step by .25 or .1
       maxIterations = 100
       maxDurationSeconds = 5
