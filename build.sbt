@@ -11,7 +11,7 @@ lazy val commonSettings = Seq(
   name := "dabtree",
   version := "0.2.2",
 //  organization := "com.example",
-  scalaVersion := "2.12.7",
+  scalaVersion := "2.11.12",
   test in assembly := {},
   scalacOptions ++= compilerOpts
 )

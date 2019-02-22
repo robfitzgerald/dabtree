@@ -149,8 +149,8 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
           (newParent, Some(UCBPedrosoReiGlobals[S, A, V](newGlobalState, newGlobalMeta)))
         }
 
-    val (searchResult, _) = _run(startFrontierPayloads)
+    val (searchResult, iterationsCount) = _run(startFrontierPayloads)
 
-    GenericPedrosoReiCollect.collect(searchResult, objective)
+    GenericPedrosoReiCollect.collect(searchResult, objective, iterationsCount)
   }
 }

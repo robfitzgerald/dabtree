@@ -92,9 +92,9 @@ class CombSearchExperiment (ctx: CombSearchExperiment.ExecutionContext, scRange:
 
         new CombSearch {
 
-          def minValue: Value = realSolution.min
+          def minValue: Value = 0.0
 
-          def maxValue: Value = math.sqrt(realSolution.size.toDouble)
+          def maxValue: Value = Double.MaxValue
 
           def numChildren: Int = numChildrenParam
 

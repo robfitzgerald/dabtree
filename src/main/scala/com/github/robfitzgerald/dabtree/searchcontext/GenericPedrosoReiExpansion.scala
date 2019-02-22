@@ -33,7 +33,7 @@ object GenericPedrosoReiExpansion {
     objective            : Objective[V],
     allowChildExpansion  : S => Boolean,
     evaluate             : Option[S => V],
-    generateChildren     : S => Array[(S, Option[A])],
+    generateChildren     : S => Array[(S, Option[A])]
   )(payload: Payload[S,A,V]): G[Payload[S,A,V]] = {
 
     val (banditParent, optionGlobals) = payload
