@@ -8,10 +8,10 @@ import scala.util.matching.Regex
 import org.apache.spark.{SparkConf, SparkContext}
 import cats.syntax.apply._
 
-import com.github.robfitzgerald.dabtree.spark.example.CombSearchExperiment.ExecutionContext
-import com.github.robfitzgerald.dabtree.spark.sampler.pedrosorei.Payload
+import com.github.robfitzgerald.dabtree.spark.sampler.pedrosorei
 import com.github.robfitzgerald.dabtree.spark.searchcontext.DoublePrecisionCollect
 import com.github.robfitzgerald.dabtree.spark.RankingDoublePrecision
+import com.github.robfitzgerald.dabtree.spark.sampler.pedrosorei.Payload
 import com.monovore.decline._
 
 object CombinatorialSearchTrialRunner extends CommandApp(
@@ -19,7 +19,9 @@ object CombinatorialSearchTrialRunner extends CommandApp(
   header = "DABTree applied to a combinatorial search solving function approximation",
   main = {
 
-    val ctxOption = Opts.option[String]("ctx", help = "Spark Context master: 'spark-local-numCores-numPartitions' or 'spark-yarn-numCores-numPartitions'").withDefault("spark-local-3-1")
+//    val ctxOption = Opts.option[String]("ctx", help = "Spark Context master: 'spark-local-numCores-numPartitions' or 'spark-yarn-numCores-numPartitions'").withDefault("spark-local-3-1")
+    val coresOption = Opts.option[Int]("cores", help = "spark cores").withDefault(1)
+    val partitionsOption = Opts.option[Int]("partitions", help = "partitions per executor").withDefault(1)
     val scOption = Opts.option[String]("sc", help = "sample confidence").withDefault("25")
     val defaultActivePayloads: Int = 17
     val actOption = Opts.option[String]("act", help = "max number of active payloads per iteration").withDefault(defaultActivePayloads.toString)
@@ -28,19 +30,29 @@ object CombinatorialSearchTrialRunner extends CommandApp(
     val trialsOption = Opts.option[Int]("trials", help = "number of trials per configuration").withDefault(1)
     val probSizeOption = Opts.option[Int]("pSize", help = "number of dimensions of the problem space").withDefault(20)
 
-    (ctxOption, scOption, actOption, payloadsOption, pStarOption, trialsOption, probSizeOption).mapN { (ctxString, sc, act, pl, pStar, trials, probSize) =>
-      println(s"run with args: --sc=$sc --act=$act --pl=$pl --trials=$trials --pSize=$probSize")
+    (coresOption, partitionsOption, scOption, actOption, payloadsOption, pStarOption, trialsOption, probSizeOption).mapN { (cores, partitions, sc, act, pl, pStar, trials, probSize) =>
+      println(s"spark $cores cores, $partitions partitions, run with args: --sc=$sc --act=$act --pl=$pl --trials=$trials --pSize=$probSize")
+      val sparkContext = new SparkContext(new SparkConf().setMaster("yarn").setAppName("DabtreeSpark-CombinatorialTest"))
       val scRange = CombSearchExperiment.parseIntegers(sc)
       val actRange = CombSearchExperiment.parseIntegers(act)
       val plRange = CombSearchExperiment.parseIntegers(pl)
       val pStarRange = CombSearchExperiment.parseDecimals(pStar)
-      val ctx = CombSearchExperiment.ExecutionContext(ctxString)
-      new CombSearchExperiment(ctx, scRange, actRange, plRange, pStarRange, trials, probSize).run()
+      new CombSearchExperiment(sparkContext, cores, partitions, scRange, actRange, plRange, pStarRange, trials, probSize).run()
     }
   }
 )
 
-class CombSearchExperiment (ctx: CombSearchExperiment.ExecutionContext, scRange: Seq[Int], actRange: Seq[Int], plRange: Seq[Int], pStarRange: Seq[Double], numTrials: Int, problemDimensionality: Int) {
+class CombSearchExperiment (
+  initSparkContext: SparkContext,
+  cores: Int,
+  partitions  : Int,
+  scRange     : Seq[Int],
+  actRange    : Seq[Int],
+  plRange     : Seq[Int],
+  pStarRange  : Seq[Double],
+  numTrials   : Int,
+  problemDimensionality: Int
+) {
 
   case class Stats(
     sumCost: Double = 0.0,
@@ -70,7 +82,7 @@ class CombSearchExperiment (ctx: CombSearchExperiment.ExecutionContext, scRange:
 
   def run(): Unit = {
     for {
-      rankingPolicyParam  <- Seq(
+      rankingPolicyParam <- Seq(
         ("costbound", RankingDoublePrecision.CostLowerBoundedRanking[Vector[Double], Double])
         //      ("reward", Ranking.GenericRanking[Vector[Double], Double, Double]),
         //      ("treedepth", CombSearch.TreeDepthRankingPolicy(problemSizeParam)),
@@ -96,70 +108,70 @@ class CombSearchExperiment (ctx: CombSearchExperiment.ExecutionContext, scRange:
       } yield {
         val (rankingPolicyName, rankingPolicyFn) = rankingPolicyParam
 
-        ctx match {
-          case ExecutionContext.Local =>
-            throw new IllegalArgumentException("please run using Spark")
-          case ExecutionContext.Spark(sparkConf, cores, partitions) =>
-            new SparkCombSearchRunner {
+        //        ctx match {
+        //          case ExecutionContext.Local =>
+        //            throw new IllegalArgumentException("please run using Spark")
+        //          case ExecutionContext.Spark(sparkConf, cores, partitions) =>
+        new SparkCombSearchRunner {
 
-              def sparkContext: SparkContext = new SparkContext(sparkConf)
+          def sparkContext: SparkContext = initSparkContext
 
-              def parallelism: Int = cores * partitions
+          def parallelism: Int = cores * partitions
 
-              def minValue: Value = 0.0
+          def minValue: Value = 0.0
 
-              def maxValue: Value = Double.MaxValue
+          def maxValue: Value = Double.MaxValue
 
-              def numChildren: Int = numChildrenParam
+          def numChildren: Int = numChildrenParam
 
-              def problemSize: Int = problemDimensionality
+          def problemSize: Int = problemDimensionality
 
-              def rankingPolicy: Payload[Vector[Double], Double, Double] => Double = rankingPolicyFn
+          def rankingPolicy: Payload[Vector[Double], Double, Double] => Double = rankingPolicyFn
 
-              def activatedPayloadLimit: Int = act
+          def activatedPayloadLimit: Int = act
 
-              def totalPayloadCapacity: Int = pLimit
+          def totalPayloadCapacity: Int = pLimit
 
-              override def pStarPromotion: Double = pStar
+          override def pStarPromotion: Double = pStar
 
-              {
-                for {
-                  result <- runSearch(maxIterations, maxDuration, sc * numChildrenParam)
-                } yield {
-                  result.bestCost match {
-                    case None =>
-                    case Some(bestCost) =>
-                      stats = stats.copy(
-                        sumCost = stats.sumCost + bestCost,
-                        sumPayloads = stats.sumPayloads + result.payloadsCount,
-                        sumAct = stats.sumAct + result.activatedCount,
-                        sumSus = stats.sumSus + result.suspendedCount,
-                        sumCan = stats.sumCan + result.cancelledCount,
-                        sumSamples = stats.sumSamples + result.samples,
-                        sumIterations = stats.sumIterations + result.iterations
-                      )
-                  }
-                  s"$counter,$problemDimensionality,$numChildrenParam,$act,$pLimit," +
-                    s"$rankingPolicyName,$maxIterations,$sc,$samplesPerIteration,$maxDurationSeconds,$trial," +
-                    result.toCSVString +
-                    "\n"
-                }
-              } match {
-                case Some(row) =>
-                  //            print(row)
-                  rawFileOutput.append(row)
+          {
+            for {
+              result <- runSearch(maxIterations, maxDuration, sc * numChildrenParam)
+            } yield {
+              result.bestCost match {
                 case None =>
-                  val emptyRow: String =
-                    s"$counter,$problemDimensionality,$numChildrenParam,$act,$pLimit," +
-                      s"$rankingPolicyName,$maxIterations,$sc,$samplesPerIteration,$maxDurationSeconds,$trial," +
-                      ",,,,,\n"
-                  //            print(emptyRow)
-                  rawFileOutput.append(emptyRow)
+                case Some(bestCost) =>
+                  stats = stats.copy(
+                    sumCost = stats.sumCost + bestCost,
+                    sumPayloads = stats.sumPayloads + result.payloadsCount,
+                    sumAct = stats.sumAct + result.activatedCount,
+                    sumSus = stats.sumSus + result.suspendedCount,
+                    sumCan = stats.sumCan + result.cancelledCount,
+                    sumSamples = stats.sumSamples + result.samples,
+                    sumIterations = stats.sumIterations + result.iterations
+                  )
               }
-              counter += 1
+              s"$counter,$problemDimensionality,$numChildrenParam,$act,$pLimit," +
+                s"$rankingPolicyName,$maxIterations,$sc,$samplesPerIteration,$maxDurationSeconds,$trial," +
+                result.toCSVString +
+                "\n"
             }
+          } match {
+            case Some(row) =>
+              //            print(row)
+              rawFileOutput.append(row)
+            case None =>
+              val emptyRow: String =
+                s"$counter,$problemDimensionality,$numChildrenParam,$act,$pLimit," +
+                  s"$rankingPolicyName,$maxIterations,$sc,$samplesPerIteration,$maxDurationSeconds,$trial," +
+                  ",,,,,\n"
+              //            print(emptyRow)
+              rawFileOutput.append(emptyRow)
+          }
+          counter += 1
         }
       }
+
 
       // summarize
       val a = stats.copy(
@@ -171,7 +183,6 @@ class CombSearchExperiment (ctx: CombSearchExperiment.ExecutionContext, scRange:
         sumSamples = stats.sumSamples / numTrials,
         sumIterations = stats.sumIterations / numTrials
       )
-
 
 
       val label = s"pLim=$pLimit-actPl=$act-sc=$sc-pStar=$pStar"
