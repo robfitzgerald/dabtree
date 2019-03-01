@@ -1,8 +1,7 @@
 scalaVersion in ThisBuild := "2.11.12"
 
 lazy val commonSettings = Seq(
-  version := "0.3.0",
-//  organization := "com.example",
+  version := "0.4.0",
   test in assembly := {},
   scalacOptions ++= compilerOpts
 )
@@ -22,10 +21,9 @@ lazy val dabtreeSpark = (project in file("dabtree-spark")).
   settings(
     name := "dabtree-spark",
     crossScalaVersions := Seq("2.11.12", "2.12.8"),
-//    mainClass in assembly := Some("com.github.robfitzgerald.dabtree.example.CombinatorialSearchTrialRunner"),
+    mainClass in assembly := Some("com.github.robfitzgerald.dabtree.spark.example.CombinatorialSearchTrialRunner"),
     libraryDependencies ++= Seq(Decline, Cats, Spark, Scalactic, Scalatest, Scalacheck),
     assemblyMergeStrategy in assembly := {
-      //    case "META-INF/services/org.apache.livy.LivyClientFactory" => MergeStrategy.last
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case _ => MergeStrategy.first
     }
@@ -39,10 +37,9 @@ lazy val dabtreeCatsSpire = (project in file("dabtree-cats-spire")).
   settings(
     name := "dabtree-cats-spire",
     crossScalaVersions := Seq("2.11.12"),
-    mainClass in assembly := Some("com.github.robfitzgerald.dabtree.example.CombinatorialSearchTrialRunner"),
+    mainClass in assembly := Some("com.github.robfitzgerald.dabtree.example.LocalCombinatorialSearchTrialApp"),
     libraryDependencies ++= Seq(Spire, Cats, Decline, Scalactic, Scalatest, Scalacheck),
     assemblyMergeStrategy in assembly := {
-      //    case "META-INF/services/org.apache.livy.LivyClientFactory" => MergeStrategy.last
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case _ => MergeStrategy.first
     }
