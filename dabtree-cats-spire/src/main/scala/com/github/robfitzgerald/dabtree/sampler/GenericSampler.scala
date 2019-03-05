@@ -35,22 +35,36 @@ object GenericSampler extends SamplerOps with Serializable {
       val childrenStates: IndexedSeq[S] = parent.children.map { _.state }
 
       // perform samples
+      var bestIdx = 0
+      var bestReward = 0.0
       cfor(0)(_ < sampleIterations, _ + 1) { _ =>
 
         // basic MCTS sampling
-        val selectedChildIndex: Int = randomSelection(parent)
-        val selectedAction: A = childrenActions(selectedChildIndex)
-        val selectedState: S = childrenStates(selectedChildIndex)
+//        val selectedChildIndex: Int = randomSelection(parent)
+        val selectedAction: A = childrenActions(bestIdx)
+        val selectedState: S = childrenStates(bestIdx)
         val simulatedState: S = simulate(selectedState)
         val cost: V = evaluate(simulatedState)
 
         // perform update on child and parent (globals via immutable semantics, parent/child via mutable)
-        val selectedChildStats = childrenStats(selectedChildIndex)
+        val selectedChildStats = childrenStats(bestIdx)
         updatedSamplerState = updateSamplerState(updatedSamplerState, simulatedState, selectedAction, cost)
         updateStats(selectedChildStats, cost)
         updateStats(parentStats, cost)
-        val childRewardUpdate = rewardFunction(selectedChildStats, updatedSamplerState, parentStats.observations)
-        childrenRewards.update(selectedChildIndex, childRewardUpdate)
+
+        // update all rewards, and note the best child along the way, for the next sample
+        bestReward = 0.0
+        for {
+          childIdx <- childrenRewards.indices
+        } {
+          val updateChild = childrenStats(childIdx)
+          val childRewardUpdate: Double = rewardFunction(updateChild, updatedSamplerState, parentStats.observations)
+          if (bestReward < childRewardUpdate) {
+            bestReward = childRewardUpdate
+            bestIdx = childIdx
+          }
+          childrenRewards.update(childIdx, childRewardUpdate)
+        }
         parentReward = rewardFunction(parentStats, updatedSamplerState, 0)
       }
 

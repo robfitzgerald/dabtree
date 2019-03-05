@@ -6,7 +6,7 @@ import com.github.robfitzgerald.dabtree.sampler.pedrosorei.Payload
 
 class LocalCombSearchRunnerTests extends DefaultTest {
   "LocalCombSearchRunner" when {
-    "called with a 11-item vector problem" should {
+    "called with a 11-item vector problem" ignore {
       "be fun" in new LocalCombSearchRunner {
 
         def problemSize = 10

@@ -1,7 +1,7 @@
 scalaVersion in ThisBuild := "2.11.12"
 
 lazy val commonSettings = Seq(
-  version := "0.4.0",
+  version := "0.4.1",
   test in assembly := {},
   scalacOptions ++= compilerOpts
 )

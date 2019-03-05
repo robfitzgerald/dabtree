@@ -11,55 +11,71 @@ import com.github.robfitzgerald.dabtree.common.banditnode.SearchState
 import com.github.robfitzgerald.dabtree.common.DabTreeFunctionParameters
 import com.github.robfitzgerald.dabtree.spark.banditnode.SparkBanditParent
 import com.github.robfitzgerald.dabtree.spark.objective.Objective
-import com.github.robfitzgerald.dabtree.spark.randomselection.RandomSelection
 import com.github.robfitzgerald.dabtree.spark.sampler.SamplerDoublePrecision
 import com.github.robfitzgerald.dabtree.spark.sampler.pedrosorei.{Payload, UCBPedrosoReiGlobalState, UCBPedrosoReiGlobals, UCBPedrosoReiMetaParameters}
 import com.github.robfitzgerald.dabtree.spark.searchcontext.DoublePrecisionCollect.CollectResult
 
 class SparkAsyncSearch[S, A](
-  sparkContext               : SparkContext,
-  parallelism                : Int,
-  fns                        : DabTreeFunctionParameters[S, A, Double],
-  objective                  : Objective[Double],
-  rankingPolicy              : Payload[S, A, Double] => Double,
-  activatedPayloadLimit      : Int,
-  totalPayloadCapacity       : Int,
-  startFrontier              : List[(S, Option[A])],
-  synchronize                : Boolean = true,
-  explorationCoefficient     : Int => Double = (_: Int) => math.sqrt(2),
-  explorationUpdate          : Option[Double => Double] = None,
+  sparkContext: SparkContext,
+  cores   : Int,
+  partitions: Int,
+  dabtreeFunctions: DabTreeFunctionParameters[S, A, Double],
+  objective: Objective[Double],
+  rankingPolicy: Payload[S, A, Double] => Double,
+  activatedPayloadLimit: Int,
+  totalPayloadCapacity: Int,
+  startFrontier: List[(S, Option[A])],
+  synchronize         : Boolean = true,
+  checkpointRate      : Int = 10,
+  explorationCoefficient: Int => Double = (_: Int) => math.sqrt(2),
+  explorationUpdate   : Option[Double => Double] = None,
   expandObservationsThreshold: Int = 30,
   pStarPromotion             : Double = 0.5D,
-  maxExpandPerIteration      : Int = 2
+  maxExpandPerIteration      : Int = 2,
+  resultCollectionBufferTime: Long = 1000L
 ) {
 
-  val partitions = 3
-
   def run(iterationsMax: Int, durationMax: Long, samplesPerIteration: Int): Option[CollectResult[S]] = {
-    val stopTime: Long = System.currentTimeMillis() + durationMax
 
-    val bCastFns = sparkContext.broadcast(fns)
-    val bCastRandom = sparkContext.broadcast(RandomSelection.scalaRandom[S, A])
+    // stop times relative to each node in this cluster, based on the currentTimeMillis of that cluster
+
+    val bCastDuration = sparkContext.broadcast(durationMax - resultCollectionBufferTime)
+//    val bCastStopTime = sparkContext.broadcast(System.currentTimeMillis() + durationMax)
+    val stopTimes: Array[(Int, Long)] = sparkContext.
+      parallelize(0 until cores * partitions, cores * partitions).
+      map { index => (index, System.currentTimeMillis() + bCastDuration.value) }.
+      collect()
+
+    val startTime = System.currentTimeMillis()
+
+    // globally-available
     val bCastObjective = sparkContext.broadcast(objective)
+    val bCastSamplesPerIteration = sparkContext.broadcast(samplesPerIteration)
 
-    val sampler: SamplerDoublePrecision[S, A] = SamplerDoublePrecision(bCastFns, bCastRandom, bCastObjective)
-
+    // core DABTree Search Phases
+    val bCastDabtreeFunctions = sparkContext.broadcast(dabtreeFunctions)
+    val sampler: SamplerDoublePrecision[S, A] = SamplerDoublePrecision(bCastDabtreeFunctions, bCastObjective)
     val expandFunction: Payload[S, A, Double] => List[Payload[S, A, Double]] =
       SparkAsyncSearch.serializationSafeExpandFunction(
         expandObservationsThreshold,
         pStarPromotion,
         maxExpandPerIteration,
         objective,
-        bCastFns
+        bCastDabtreeFunctions
       )
-
     val rebalanceFunction: List[Payload[S, A, Double]] => List[Payload[S, A, Double]] =
       SparkAsyncSearch.serializationSafeRebalancingFunction(activatedPayloadLimit, totalPayloadCapacity, rankingPolicy)
-
-    val bCastSamplesPerIteration = sparkContext.broadcast(samplesPerIteration)
     val bCastSampler = sparkContext.broadcast(sampler)
     val bCastExpandFunction = sparkContext.broadcast(expandFunction)
     val bCastRebalanceFunction = sparkContext.broadcast(rebalanceFunction)
+
+    // capture Cancellation data
+    val cancelledPayloadAccumulator: CancelledPayloadAccumulator = new CancelledPayloadAccumulator()
+    sparkContext.register(cancelledPayloadAccumulator, "CancelledPayloadAccumulator")
+
+    // set up checkpoint directory
+//    val checkpointDirectory = if (workingDirectory.endsWith("/")) s"${workingDirectory}checkpoint/" else s"$workingDirectory/checkpoint"
+//    sparkContext.setCheckpointDir(checkpointDirectory)
 
 
 
@@ -72,30 +88,37 @@ class SparkAsyncSearch[S, A](
       */
     @tailrec
     def _run(frontier: RDD[Payload[S, A, Double]], it: Int = 1): (RDD[Payload[S, A, Double]], Int) = {
+      if (it > iterationsMax) {
+        (frontier, it - 1)
+      } else {
+        if (it % checkpointRate == 0) {
+          frontier.persist()
+        }
 
-      if (it > iterationsMax || System.currentTimeMillis() > stopTime) (frontier, it - 1)
-      else {
+        val stop: Boolean =
+          if (it == SparkAsyncSearch.TerminationCheckRate) {
+            frontier.map{ case (_, _, stopTime) => stopTime < System.currentTimeMillis() }.fold(false){_||_}
+          } else false
 
-        ///////////////////////
-        // 1 --- sample step //
-        ///////////////////////
-        val sampledFrontier: RDD[Payload[S, A, Double]] =
-        frontier.
-          map { case (parent, globals) =>
-            if (parent.searchState == SearchState.Activated) {
-               val updatedPayload: Payload[S, A, Double] = bCastSampler.value.run((parent, globals), bCastSamplesPerIteration.value).value
-//                              print("^")
-
-              updatedPayload
-            } else {
-              //                print("_")
-              (parent, globals)
+        if (stop) {
+          (frontier, it - 1)
+        } else {
+          ///////////////////////
+          // 1 --- sample step //
+          ///////////////////////
+          val sampledFrontier: RDD[Payload[S, A, Double]] =
+          frontier.
+            map { payload =>
+              val (parent, _, stopTime) = payload
+              if (System.currentTimeMillis() > stopTime) {
+                payload
+              } else if (parent.searchState != SearchState.Activated) { // only sample activated nodes
+                payload
+              } else {
+                bCastSampler.value.run(payload, bCastSamplesPerIteration.value).value
+              }
             }
-          }
-        //        print("\n")
-
-        if (it > iterationsMax || System.currentTimeMillis() > stopTime) (sampledFrontier, it)
-        else {
+          //        println(s"sampled frontier of size ${sampledFrontier.collect.length}")
 
           ////////////////////////////
           // 2 --- synchronize step //
@@ -104,59 +127,103 @@ class SparkAsyncSearch[S, A](
           if (!synchronize) sampledFrontier
           else SparkDoublePrecisionSynchronization.synchronize[S, A](sampledFrontier, bCastSampler, bCastObjective)
 
+          //        println(s"sync frontier of size ${syncedFrontier.collect.length}")
 
-          if (it > iterationsMax || System.currentTimeMillis() > stopTime) (syncedFrontier, it)
-          else {
 
-            ///////////////////////////////////
-            // 3 --- expand & rebalance step //
-            ///////////////////////////////////
-            val rebalancedFrontier: RDD[Payload[S, A, Double]] = syncedFrontier.mapPartitions { partitionIterator =>
-              val expanded = partitionIterator.
-                toList.
-                flatMap { payload =>
-                  if (payload._1.searchState != SearchState.Activated) {
-                    List(payload)
-                  } else {
-                    bCastExpandFunction.value(payload)
-                  }
-                }
-              val rebalanced = bCastRebalanceFunction.value(expanded)
-              rebalanced.toIterator
+
+          ///////////////////////////////////
+          // 3 --- expand & rebalance step //
+          ///////////////////////////////////
+          val expandedFrontier: RDD[Payload[S, A, Double]] =
+          syncedFrontier.
+            flatMap { payload =>
+              val (_, _, stopTime) = payload
+              if (System.currentTimeMillis() > stopTime) { // exceeded time budget - no op
+                Iterator(payload)
+                //                  } else if (parent.searchState != SearchState.Activated) { // only expand children of Activated nodes - no op (wait, this isn't desired, is it?)
+                //                    List(payload)
+              } else {
+                bCastExpandFunction.value(payload)
+              }
             }
 
-            _run(rebalancedFrontier, it + 1)
-          }
+          val rebalancedFrontier: RDD[Payload[S, A, Double]] =
+            expandedFrontier.
+              mapPartitions { partitionIterator =>
+                val partitionList = partitionIterator.toList
+                if (partitionList.isEmpty) partitionIterator
+                else {
+                  val rebalanced: Iterator[Payload[S, A, Double]] = bCastRebalanceFunction.value(partitionList).toIterator
+                  val noCancelled = rebalanced.flatMap{ payload =>
+                    val (parent, _, _) = payload
+                    if (parent.searchState == SearchState.Cancelled) {
+                      val cancelledData = CancelledPayloadAccumulator.CancelledData(
+                        parent.searchStats,
+                        parent.mctsStats.observations
+                      )
+                      cancelledPayloadAccumulator.add(cancelledData)
+                      Iterator.empty
+                    } else {
+                      Iterator(payload)
+                    }
+                  }
+                  noCancelled
+                }
+              }
+
+//          println(s"it $it frontier ${rebalancedFrontier.count()}")
+
+          //        println(s"expand/rebalance frontier of size ${rebalancedFrontier.collect.length}")
+
+          //        val collect = rebalancedFrontier.collect()
+          //        val (count, act, sus, can, samples) = (
+          //          collect.length,
+          //          collect.count(_._1.searchState == SearchState.Activated),
+          //          collect.count(_._1.searchState == SearchState.Suspended),
+          //          collect.count(_._1.searchState == SearchState.Cancelled),
+          //          if (collect.isEmpty) 0 else collect.map{_._1.mctsStats.observations}.sum
+          //        )
+          //        println(s"iteration $it with $count payloads (Act:$act Sus:$sus Can:$can), $samples total samples")
+
+          _run(rebalancedFrontier, it + 1)
         }
       }
     }
 
+
     // build starting payloads based on user-provided exploration coefficient function and objective
     val startFrontierPayloads: List[Payload[S, A, Double]] = {
       for {
-        _ <- 0 until partitions
-        ((state, action), index) <- startFrontier.zipWithIndex
+        (index, stopTime) <- stopTimes
+        (state, action)   <- startFrontier
       } yield {
         val newParent = SparkBanditParent.frontierPayload(
           state,
           action,
-          Some(fns.evaluate(_)),
-          fns.generateChildren,
+          Some(dabtreeFunctions.evaluate(_)),
+          dabtreeFunctions.generateChildren,
           objective
         )
         val newGlobalState = UCBPedrosoReiGlobalState[S, A, Double](objective)
         val newGlobalMeta = UCBPedrosoReiMetaParameters(explorationCoefficient(index))
-        (newParent, Some(UCBPedrosoReiGlobals[S, A, Double](newGlobalState, newGlobalMeta)))
+        (newParent, Some(UCBPedrosoReiGlobals[S, A, Double](newGlobalState, newGlobalMeta)), stopTime)
       }
     }.toList
 
-    val (searchResult: RDD[Payload[S, A, Double]], iterationsCount: Int) = _run(sparkContext.parallelize(startFrontierPayloads), parallelism)
+    // run search
+    val (searchResult: RDD[Payload[S, A, Double]], iterationsCount: Int) = _run(sparkContext.parallelize(startFrontierPayloads, cores))
 
-    DoublePrecisionCollect.collectDoublePrecision(searchResult, objective, iterationsCount)
+    val realDuration = System.currentTimeMillis() - startTime
+    println(f"took ${realDuration.toDouble / 1000}%.2f seconds.")
+
+    // return result
+    DoublePrecisionCollect.collectDoublePrecision(searchResult, cancelledPayloadAccumulator.value, objective, iterationsCount)
   }
 }
 
 object SparkAsyncSearch {
+
+  val TerminationCheckRate: Int = 3
 
   def serializationSafeExpandFunction[S, A](
     expObsThresh: Int,

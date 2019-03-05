@@ -43,5 +43,19 @@ class MCTSStatsDoublePrecisionImmutableImplTests extends DefaultTest {
         asMutable.observations should equal (2)
       }
     }
+    "when created from a mutable stats collection" should {
+      "still evaluate as expected" in {
+        val (low, high) = (0D, 1000D)
+        val mut: MCTSStatsMutableDoublePrecisionImpl = MCTSStatsMutableDoublePrecisionImpl.empty(Minimize(low, high))
+        val imm: MCTSStatsImmutableDoublePrecisionImpl = mut.toImmutable.update(2.5D).update(7.5D)
+        val expectedVariance: Double = (math.pow(2.5-5, 2) + math.pow(7.5-5, 2)) / 2
+        imm.min should equal (2.5D)
+        imm.max should equal (7.5D)
+        imm.mean should equal (5D)
+        imm.variance should equal (expectedVariance)
+        imm.standardDeviation should equal (math.sqrt(expectedVariance))
+        imm.observations should equal (2)
+      }
+    }
   }
 }

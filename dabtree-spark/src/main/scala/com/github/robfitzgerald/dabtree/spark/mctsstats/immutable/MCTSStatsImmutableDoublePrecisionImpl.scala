@@ -16,8 +16,8 @@ case class MCTSStatsImmutableDoublePrecisionImpl (
   min: Double,
   max: Double,
   mean: Double,
-  varianceAccumulator: Double,
-  observations: Int = 0
+  varianceAccumulator: Double = 0.0,
+  observations: Long = 0
 ) extends HasStats {
   def toMutable: MCTSStatsMutableDoublePrecisionImpl = new MCTSStatsMutableDoublePrecisionImpl(min, max, mean, varianceAccumulator, observations)
 
@@ -26,7 +26,7 @@ case class MCTSStatsImmutableDoublePrecisionImpl (
   def min(o: Double, min: Double): Double = if (o < min) o else min
   def max(o: Double, max: Double): Double = if (o > max) o else max
   def median(min: Double, max: Double): Double = (min + max) / 2
-  def variance: Double = if (observations == 0) 0 else varianceAccumulator / observations
+  def variance: Double = if (observations < 2) 0 else varianceAccumulator / observations
   def standardDeviation: Double = if (observations == 0) 0 else math.sqrt(variance)
   
   def update(o: Double): MCTSStatsImmutableDoublePrecisionImpl = {
@@ -50,14 +50,14 @@ object MCTSStatsImmutableDoublePrecisionImpl {
     objective match {
       case ObjectiveDoublePrecision.Minimize(optimalBounds, badBounds) =>
         val midpoint: Double = (badBounds + optimalBounds) / 2
-        MCTSStatsImmutableDoublePrecisionImpl(badBounds, optimalBounds, midpoint, 0)
+        MCTSStatsImmutableDoublePrecisionImpl(badBounds, optimalBounds, midpoint)
       case ObjectiveDoublePrecision.Maximize(optimalBounds, badBounds) =>
         val midpoint = (badBounds + optimalBounds) / 2
-        MCTSStatsImmutableDoublePrecisionImpl(optimalBounds, badBounds, midpoint, 0)
+        MCTSStatsImmutableDoublePrecisionImpl(optimalBounds, badBounds, midpoint)
     }
   }
 
-  def runningMean(o: Double, mean: Double = 0, nextCount: Int = 1): Double = mean + ((o - mean) / nextCount)
+  def runningMean(o: Double, mean: Double, nextCount: Long): Double = mean + ((o - mean) / nextCount)
   def runningVariance(o: Double, vAcc: Double, mean: Double, nextMean: Double): Double = vAcc + ((o - mean) * (o - nextMean))
 }
 

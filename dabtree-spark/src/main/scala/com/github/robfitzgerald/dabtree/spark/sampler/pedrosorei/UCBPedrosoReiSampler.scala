@@ -45,7 +45,7 @@ class UCBPedrosoReiSampler[S, A](
       objective.optimal(stats.min, stats.max),
       stats.mean,
       pVisits,
-      stats.observations,
+      stats.observations.toInt,
       globals.meta.Cp
     )
   }

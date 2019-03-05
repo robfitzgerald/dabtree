@@ -35,7 +35,7 @@ object DoublePrecisionExpansion {
     generateChildren     : S => Array[(S, Option[A])]
   )(payload: Payload[S,A,Double]): G[Payload[S,A,Double]] = {
 
-    val (banditParent, optionGlobals) = payload
+    val (banditParent, optionGlobals, stopTime) = payload
 
     val allowExpansion = allowChildExpansion(banditParent.state)
 
@@ -96,13 +96,15 @@ object DoublePrecisionExpansion {
 
           // re-package as payloads
           val expandedAsPayloads: Array[Payload[S,A,Double]] =
-            expandedChildren.map { case (expandedChild, _) => (expandedChild, Some(globals)) }
+            expandedChildren.map { case (expandedChild, _) => (expandedChild, Some(globals), stopTime) }
 
           // combine with parent and return, wrapped in container type G
-          expandedAsPayloads.foldLeft(Monad[G].pure((updatedParent, Option(globals)))) { (acc, b) =>
+          val result = expandedAsPayloads.foldLeft(Monad[G].pure((updatedParent, Option(globals), stopTime))) { (acc, b) =>
             val rhs: G[Payload[S,A,Double]] = Monad[G].pure(b)
             MonoidK[G].combineK(acc, rhs)
           }
+
+          result
       }
     }
   }

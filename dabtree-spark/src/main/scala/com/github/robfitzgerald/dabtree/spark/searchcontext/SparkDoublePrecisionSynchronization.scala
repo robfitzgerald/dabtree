@@ -20,7 +20,7 @@ object SparkDoublePrecisionSynchronization {
     val allActiveGlobals: RDD[Option[UCBPedrosoReiGlobalState[S, A, Double]]] =
       payloads.
         flatMap {
-          case (parent, globalsOption) if parent.searchState != SearchState.Cancelled =>
+          case (parent, globalsOption, _) if parent.searchState != SearchState.Cancelled =>
             globalsOption match {
               case Some(globals) => Iterator(Some(globals.state))
               case None => Iterator.empty
@@ -49,7 +49,7 @@ object SparkDoublePrecisionSynchronization {
 
         // update all payloads with the best global state
         payloads.map { payload =>
-          val (parent, globalsOption) = payload
+          val (parent, globalsOption, stopTime) = payload
           if (parent.searchState == SearchState.Cancelled) payload
           else {
             val updatedGlobalsOption: Option[UCBPedrosoReiGlobals[S, A, Double]] = globalsOption.map {
@@ -62,7 +62,7 @@ object SparkDoublePrecisionSynchronization {
                   val updatedChildren: Array[SparkBanditChild[S, A]] =
                     parent.children.map { child =>
 
-                      val updatedReward = bCastSampler.value.rewardFunction(child.mctsStats, updatedGlobals, parent.mctsStats.observations)
+                      val updatedReward = bCastSampler.value.rewardFunction(child.mctsStats, updatedGlobals, parent.mctsStats.observations.toInt)
                       child.copy(
                         reward = updatedReward
                       )
@@ -73,7 +73,7 @@ object SparkDoublePrecisionSynchronization {
                   )
               }
 
-            (updatedParent, updatedGlobalsOption)
+            (updatedParent, updatedGlobalsOption, stopTime)
           }
         }
     }

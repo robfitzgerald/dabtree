@@ -14,10 +14,10 @@ import com.github.robfitzgerald.dabtree.spark.sampler.pedrosorei.Payload
 import com.github.robfitzgerald.dabtree.spark.sampler.pedrosorei.UCBPedrosoReiGlobals
 
 class SamplerDoublePrecision[S, A] (
-  simulate          : S => S,
-  evaluate          : S => Double,
-  randomSelection   : SparkBanditParent[S,A] => Int,
-  objective         : Objective[Double]
+  simulate       : S => S,
+  evaluate       : S => Double,
+//  banditSelection: SparkBanditParent[S,A] => Int,
+  objective      : Objective[Double]
 ) extends Serializable {
 
   def run(
@@ -25,7 +25,7 @@ class SamplerDoublePrecision[S, A] (
     samples           : Int
   ): Eval[Payload[S, A, Double]] = {
 
-    val (parent: SparkBanditParent[S, A], globalsOption: Option[UCBPedrosoReiGlobals[S, A, Double]]) = payload
+    val (parent: SparkBanditParent[S, A], globalsOption: Option[UCBPedrosoReiGlobals[S, A, Double]], stopTime: Long) = payload
     globalsOption match {
       case None =>
         Eval.now{payload}
@@ -41,27 +41,40 @@ class SamplerDoublePrecision[S, A] (
           val childrenActions: IndexedSeq[A] = parent.children.flatMap { _.action }
           val childrenStates: IndexedSeq[S] = parent.children.map { _.state }
 
-          // perform samples
-          var i = 0
+          // perform samples, keep track of the best-valued index
+          var observations = 0
+          var bestIdx = 0
+          var bestReward = 0.0
           do {
             // basic MCTS sampling
-            val selectedChildIndex: Int = randomSelection(parent)
-            val selectedAction: A = childrenActions(selectedChildIndex)
-            val selectedState: S = childrenStates(selectedChildIndex)
+            val selectedAction: A = childrenActions(bestIdx)
+            val selectedState: S = childrenStates(bestIdx)
             val simulatedState: S = simulate(selectedState)
             val cost: Double = evaluate(simulatedState)
 
             // perform update on child and parent (globals via immutable semantics, parent/child via mutable)
-            val selectedChildStats = childrenStats(selectedChildIndex)
+            val selectedChildStats = childrenStats(bestIdx)
             updatedSamplerState = updateSamplerState(updatedSamplerState, simulatedState, selectedAction, cost)
             updateStats(selectedChildStats, cost)
             updateStats(parentStats, cost)
-            val childRewardUpdate = rewardFunction(selectedChildStats, updatedSamplerState, parentStats.observations)
-            childrenRewards.update(selectedChildIndex, childRewardUpdate)
+
+            // update all rewards, and note the best child along the way, for the next sample
+            bestReward = 0.0
+            for {
+              childIdx <- childrenRewards.indices
+            } {
+              val updateChild = childrenStats(childIdx)
+              val childRewardUpdate: Double = rewardFunction(updateChild, updatedSamplerState, parentStats.observations.toInt)
+              if (bestReward < childRewardUpdate) {
+                bestReward = childRewardUpdate
+                bestIdx = childIdx
+              }
+              childrenRewards.update(childIdx, childRewardUpdate)
+            }
             parentReward = rewardFunction(parentStats, updatedSamplerState, 0)
 
-            i += 1
-          } while (i < samples)
+            observations += 1
+          } while (observations < samples)
 
           // back to immutable structures. update all children with sampling results
           val updatedChildren: Array[SparkBanditChild[S, A]] =
@@ -81,7 +94,7 @@ class SamplerDoublePrecision[S, A] (
             children = updatedChildren
           )
 
-          (updatedParent, Some(updatedSamplerState))
+          (updatedParent, Some(updatedSamplerState), stopTime)
         }
 
     }
@@ -97,9 +110,6 @@ class SamplerDoublePrecision[S, A] (
     currentGlobals.copy(state = updatedGlobalState)
   }
 
-  // we want to have access to an implicit MCTSStats[StatsType[Double], Double]. see testMagic.sc.
-  // reward function should be generic to mutable/immutable types
-  // because rewardFunction itself does not mutate state.
 
   final def rewardFunction(stats: HasStats, globals: UCBPedrosoReiGlobals[S, A, Double], pVisits: Int): Double = {
     UCBPedrosoRei.rewardFunction(
@@ -108,7 +118,7 @@ class SamplerDoublePrecision[S, A] (
       objective.optimal(stats.min, stats.max),
       stats.mean,
       pVisits,
-      stats.observations,
+      stats.observations.toInt,
       globals.meta.Cp
     )
   }
@@ -116,20 +126,20 @@ class SamplerDoublePrecision[S, A] (
 
 object SamplerDoublePrecision {
   def apply[S, A](
-    simulate          : S => S,
-    evaluate          : S => Double,
-    randomSelection   : SparkBanditParent[S,A] => Int,
-    objective         : Objective[Double]
+    simulate       : S => S,
+    evaluate       : S => Double,
+//    banditSelection: SparkBanditParent[S,A] => Int,
+    objective      : Objective[Double]
   ): SamplerDoublePrecision[S, A] = new SamplerDoublePrecision[S, A](
-    simulate, evaluate, randomSelection, objective
+    simulate, evaluate, objective
   )
 
 
   def apply[S, A](
-    bCastFns: Broadcast[DabTreeFunctionParameters[S, A, Double]],
-    bCastRandomSelection: Broadcast[SparkBanditParent[S,A] => Int],
-    bCastObjective: Broadcast[Objective[Double]]
+    bCastFns            : Broadcast[DabTreeFunctionParameters[S, A, Double]],
+//    bCastBanditSelection: Broadcast[SparkBanditParent[S,A] => Int],
+    bCastObjective      : Broadcast[Objective[Double]]
   ): SamplerDoublePrecision[S, A] = new SamplerDoublePrecision[S, A](
-    bCastFns.value.simulate, bCastFns.value.evaluate, bCastRandomSelection.value, bCastObjective.value
+    bCastFns.value.simulate, bCastFns.value.evaluate, bCastObjective.value
   )
 }

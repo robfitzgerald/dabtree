@@ -7,5 +7,5 @@ trait HasStats {
 //  def median: Double
 //  def runningMean(o: Double, mean: Double = 0, nextCount: Int = 1): Double
 //  def runningVariance(o: Double, vAcc: Double, mean: Double, nextMean: Double): Double
-  def observations: Int
+  def observations: Long
 }

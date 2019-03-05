@@ -9,13 +9,14 @@ import com.github.robfitzgerald.dabtree.spark.RankingDoublePrecision
 
 class SparkCombSearchRunnerTests extends DefaultTest {
   val sc = new SparkContext(new SparkConf().setMaster("local[2]").setAppName("CombSearchTests"))
-  val cores = 2
-  "SparkCombSearchRunner" when {
+  val coresArg = 2
+  "SparkCombSearchRunner" ignore {
     "called with a 11-item vector problem" should {
       "be fun" in new SparkCombSearchRunner {
 
         override def sparkContext: SparkContext = sc
-        override def parallelism: Int = cores
+        override def cores: Int = coresArg
+        override def partitions: Int = 1
 
         def problemSize = 10
 
@@ -23,6 +24,7 @@ class SparkCombSearchRunnerTests extends DefaultTest {
         override def maxValue: Double = math.sqrt(realSolution.size.toDouble)
         override def minValue: Double = realSolution.min
 
+        override def workingDirectory: String = "/tmp"
         override def activatedPayloadLimit: Int = 100
         override def totalPayloadCapacity: Int = 200
         override def pStarPromotion: Double = 0.5

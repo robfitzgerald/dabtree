@@ -16,15 +16,15 @@ class MCTSStatsMutableDoublePrecisionImpl (
   var min: Double,
   var max: Double,
   var mean: Double,
-  var varianceAccumulator: Double,
-  var observations: Int = 0
+  var varianceAccumulator: Double = 0.0,
+  var observations: Long = 0
 ) extends HasStats {
   def toImmutable: MCTSStatsImmutableDoublePrecisionImpl = MCTSStatsImmutableDoublePrecisionImpl(min, max, mean, varianceAccumulator, observations)
 
   def min(o: Double, min: Double): Double = if (o < min) o else min
   def max(o: Double, max: Double): Double = if (o > max) o else max
   def median(min: Double, max: Double): Double = (min + max) / 2
-  def variance: Double = if (observations == 0) 0 else varianceAccumulator / observations
+  def variance: Double = if (observations < 2) 0 else varianceAccumulator / observations
   def standardDeviation: Double = if (observations == 0) 0 else math.sqrt(variance)
 
   def update(o: Double): Unit = {
@@ -47,13 +47,13 @@ object MCTSStatsMutableDoublePrecisionImpl {
     objective match {
       case ObjectiveDoublePrecision.Minimize(optimalBounds, badBounds) =>
         val midpoint = (badBounds + optimalBounds) / 2
-        new MCTSStatsMutableDoublePrecisionImpl(badBounds,optimalBounds,midpoint,0)
+        new MCTSStatsMutableDoublePrecisionImpl(badBounds,optimalBounds,midpoint)
       case ObjectiveDoublePrecision.Maximize(optimalBounds, badBounds) =>
         val midpoint = (badBounds + optimalBounds) / 2
-        new MCTSStatsMutableDoublePrecisionImpl(optimalBounds,badBounds,midpoint,0)
+        new MCTSStatsMutableDoublePrecisionImpl(optimalBounds,badBounds,midpoint)
     }
   }
 
-  def runningMean(o: Double, mean: Double = 0, nextCount: Int = 1): Double = mean + ((o - mean) / nextCount)
+  def runningMean(o: Double, mean: Double, nextCount: Long): Double = mean + ((o - mean) / nextCount)
   def runningVariance(o: Double, vAcc: Double, mean: Double, nextMean: Double): Double = vAcc + ((o - mean) * (o - nextMean))
 }
