@@ -65,7 +65,7 @@ class SamplerDoublePrecision[S, A] (
             } {
               val updateChild = childrenStats(childIdx)
               val childRewardUpdate: Double = rewardFunction(updateChild, updatedSamplerState, parentStats.observations.toInt)
-              if (bestReward < childRewardUpdate) {
+              if (objective.isMoreOptimalThan(bestReward, childRewardUpdate)) {
                 bestReward = childRewardUpdate
                 bestIdx = childIdx
               }
