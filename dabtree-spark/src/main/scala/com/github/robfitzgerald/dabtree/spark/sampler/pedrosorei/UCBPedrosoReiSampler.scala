@@ -13,15 +13,13 @@ import com.github.robfitzgerald.dabtree.spark.reward.UCBPedrosoRei
   * @param simulate a function for producing terminal states from partial states
   * @param evaluate a function for cost evaluation of a state
   * @param objective in our search, whether we seek to minimize or maximize the costs
-  * @param randomSelection a method used to select randomly when searching
   * @tparam S user-provided state type
   * @tparam A user-provided action type
   */
 class UCBPedrosoReiSampler[S, A](
   override val simulate       : S => S,
   override val evaluate       : S => Double,
-  override val objective      : Objective[Double],
-  override val randomSelection: SparkBanditParent[S, A] => Int = RandomSelection.scalaRandom[S, A]
+  override val objective      : Objective[Double]
 ) extends CanSample[S, A, Double, UCBPedrosoReiGlobals[S, A, Double]] with Serializable {
 
   final def updateStats(stats: MCTSStatsMutableDoublePrecisionImpl, observation: Double): Unit = {
@@ -56,9 +54,8 @@ object UCBPedrosoReiSampler {
   def apply[S, A](
     simulate  : S => S,
     evaluate  : S => Double,
-    objective : Objective[Double],
-    randomSelection: SparkBanditParent[S, A] => Int = RandomSelection.scalaRandom[S, A]
+    objective : Objective[Double]
   ): UCBPedrosoReiSampler[S, A] = {
-    new UCBPedrosoReiSampler[S, A](simulate, evaluate, objective, randomSelection)
+    new UCBPedrosoReiSampler[S, A](simulate, evaluate, objective)
   }
 }

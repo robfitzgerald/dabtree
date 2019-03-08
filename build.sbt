@@ -75,6 +75,6 @@ val Spark = "org.apache.spark" %% "spark-core" % "2.3.1" % "provided"
 //val FramelessCats = "org.typelevel" %% "frameless-cats"    % framelessVersion
 
 // testing
-val Scalactic = "org.scalactic" %% "scalactic" % "3.0.4"
+val Scalactic = "org.scalactic" %% "scalactic" % "3.0.4" % "test"
 val Scalatest = "org.scalatest" %% "scalatest" % "3.0.4" % "test"
 val Scalacheck = "org.scalacheck" %% "scalacheck" % "1.13.4" % "test"
