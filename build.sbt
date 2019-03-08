@@ -1,5 +1,19 @@
 scalaVersion in ThisBuild := "2.11.12"
 
+lazy val dabtree = project
+  .in(file("."))
+  .settings(commonSettings: _*)
+  .settings(
+    name := "dabtree",
+    crossScalaVersions := Seq("2.11.12", "2.12.8"),
+    version := "1.0.0"
+  )
+  .aggregate(
+    dabtreeCommon,
+    dabtreeSpark,
+    dabtreeCatsSpire
+  )
+
 lazy val commonSettings = Seq(
   version := "0.4.1",
   test in assembly := {},
@@ -37,7 +51,7 @@ lazy val dabtreeCatsSpire = (project in file("dabtree-cats-spire")).
   settings(
     name := "dabtree-cats-spire",
     crossScalaVersions := Seq("2.11.12"),
-    mainClass in assembly := Some("com.github.robfitzgerald.dabtree.example.LocalCombinatorialSearchTrialApp"),
+    mainClass in assembly := Some("com.github.robfitzgerald.dabtree.local.example.LocalCombinatorialSearchTrialApp"),
     libraryDependencies ++= Seq(Spire, Cats, Decline, Scalactic, Scalatest, Scalacheck),
     assemblyMergeStrategy in assembly := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard

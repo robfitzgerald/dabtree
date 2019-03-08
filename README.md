@@ -14,7 +14,7 @@ See __releases__ for .jar files.
 
 ### Usage
 
-Consider the example in `com.github.robfitzgerald.dabtree.example.CombSearchTests`. The problem is to find a vector of values, each in the range [0,1]. 
+Consider the example in `com.github.robfitzgerald.dabtree.local.example.CombSearchTests`. The problem is to find a vector of values, each in the range [0,1]. 
 
 To do this in a local context (storing tree operations in a List and performing samples synchronously), a `LocalSyncSearch` can be called. 
 
