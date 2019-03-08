@@ -18,11 +18,19 @@ object DoublePrecisionCollect {
     suspendedCount: Int = 0,
     cancelledCount: Int = 0,
     samples: Long = 0,
-    iterations: Int = 0
+    iterations: Int = 0,
+    synchronizations: Int = 0
   ) {
+
+    lazy val totalStateChanges: Int = activatedCount + suspendedCount + cancelledCount
+    def activatedRatio: Double = activatedCount.toDouble / totalStateChanges
+    def suspendedRatio: Double = suspendedCount.toDouble / totalStateChanges
+    def cancelledRatio: Double = cancelledCount.toDouble / totalStateChanges
 
     def addIterations(iterations: Int): CollectResult[S] =
       this.copy(iterations = iterations)
+    def addSynchronizations(synchronizations: Int): CollectResult[S] =
+      this.copy(synchronizations = synchronizations)
 
     def + (stats: SearchStats, samples: Long): CollectResult[S] = {
       this.copy(
@@ -73,10 +81,14 @@ object DoublePrecisionCollect {
   def csvHeader: String = s"cost,payloadsCount,activatedCount,suspendedCount,cancelledCount,samples,iterations"
 
 
-  def collectDoublePrecision[S, A](payloads: RDD[Payload[S, A, Double]], cancelledData: CancelledData, objective: Objective[Double], iterations: Int): Option[CollectResult[S]] = {
+  def collectDoublePrecision[S, A](payloads: RDD[Payload[S, A, Double]], cancelledData: CancelledData, objective: Objective[Double], iterations: Int, synchronizations: Int): Option[CollectResult[S]] = {
     if (payloads.isEmpty) None
     else {
-      val initialAccumulatorState = CollectResult[S]().addIterations(iterations) + (cancelledData.searchStats, cancelledData.observations)
+      val initialAccumulatorState =
+        CollectResult[S]().
+          addIterations(iterations).
+          addSynchronizations(synchronizations) + (cancelledData.searchStats, cancelledData.observations)
+
       val collectResult = payloads.
         aggregate(initialAccumulatorState)(
           (acc: CollectResult[S], payload: Payload[S, A, Double]) => {

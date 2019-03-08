@@ -87,21 +87,21 @@ class SparkAsyncSearch[S, A](
       * @return the final frontier.. and number of iterations
       */
     @tailrec
-    def _run(frontier: RDD[Payload[S, A, Double]], it: Int = 1): (RDD[Payload[S, A, Double]], Int) = {
+    def _run(frontier: RDD[Payload[S, A, Double]], it: Int = 1, sync: Int = 0): (RDD[Payload[S, A, Double]], Int, Int) = {
       if (it > iterationsMax) {
-        (frontier, it - 1)
+        (frontier, it - 1, sync)
       } else {
         if (it % checkpointRate == 0) {
           frontier.persist()
         }
 
         val stop: Boolean =
-          if (it == SparkAsyncSearch.TerminationCheckRate) {
+          if (it % SparkAsyncSearch.TerminationCheckRate == 0) {
             frontier.map{ case (_, _, stopTime) => stopTime < System.currentTimeMillis() }.fold(false){_||_}
           } else false
 
         if (stop) {
-          (frontier, it - 1)
+          (frontier, it - 1, sync)
         } else {
           ///////////////////////
           // 1 --- sample step //
@@ -185,7 +185,8 @@ class SparkAsyncSearch[S, A](
           //        )
           //        println(s"iteration $it with $count payloads (Act:$act Sus:$sus Can:$can), $samples total samples")
 
-          _run(rebalancedFrontier, it + 1)
+          val nextSync = if (synchronize) sync + 1 else sync
+          _run(rebalancedFrontier, it + 1, nextSync)
         }
       }
     }
@@ -211,13 +212,13 @@ class SparkAsyncSearch[S, A](
     }.toList
 
     // run search
-    val (searchResult: RDD[Payload[S, A, Double]], iterationsCount: Int) = _run(sparkContext.parallelize(startFrontierPayloads, cores))
+    val (searchResult: RDD[Payload[S, A, Double]], iterationsCount: Int, synchronizations: Int) = _run(sparkContext.parallelize(startFrontierPayloads, cores))
 
     val realDuration = System.currentTimeMillis() - startTime
     println(f"took ${realDuration.toDouble / 1000}%.2f seconds.")
 
     // return result
-    DoublePrecisionCollect.collectDoublePrecision(searchResult, cancelledPayloadAccumulator.value, objective, iterationsCount)
+    DoublePrecisionCollect.collectDoublePrecision(searchResult, cancelledPayloadAccumulator.value, objective, iterationsCount, synchronizations)
   }
 }
 
