@@ -1,7 +1,21 @@
 scalaVersion in ThisBuild := "2.11.12"
 
+lazy val dabtree = project
+  .in(file("."))
+  .settings(commonSettings: _*)
+  .settings(
+    name := "dabtree",
+    crossScalaVersions := Seq("2.11.12", "2.12.8"),
+    version := "1.1.0"
+  )
+  .aggregate(
+    dabtreeCommon,
+    dabtreeSpark,
+    dabtreeCatsSpire
+  )
+
 lazy val commonSettings = Seq(
-  version := "0.4.0",
+  version := "0.5.0",
   test in assembly := {},
   scalacOptions ++= compilerOpts
 )
@@ -37,7 +51,7 @@ lazy val dabtreeCatsSpire = (project in file("dabtree-cats-spire")).
   settings(
     name := "dabtree-cats-spire",
     crossScalaVersions := Seq("2.11.12"),
-    mainClass in assembly := Some("com.github.robfitzgerald.dabtree.example.LocalCombinatorialSearchTrialApp"),
+    mainClass in assembly := Some("com.github.robfitzgerald.dabtree.local.example.LocalCombinatorialSearchTrialApp"),
     libraryDependencies ++= Seq(Spire, Cats, Decline, Scalactic, Scalatest, Scalacheck),
     assemblyMergeStrategy in assembly := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
@@ -75,6 +89,6 @@ val Spark = "org.apache.spark" %% "spark-core" % "2.3.1" % "provided"
 //val FramelessCats = "org.typelevel" %% "frameless-cats"    % framelessVersion
 
 // testing
-val Scalactic = "org.scalactic" %% "scalactic" % "3.0.4"
+val Scalactic = "org.scalactic" %% "scalactic" % "3.0.4" % "test"
 val Scalatest = "org.scalatest" %% "scalatest" % "3.0.4" % "test"
 val Scalacheck = "org.scalacheck" %% "scalacheck" % "1.13.4" % "test"

@@ -28,7 +28,7 @@ object DoublePrecisionSynchronization {
     val bestGlobalState: UCBPedrosoReiGlobalState[S, A, Double] = Foldable[FTransformer].fold(allActiveGlobals)
 
     payloads.map { payload =>
-      val (parent, globalsOption) = payload
+      val (parent, globalsOption, stopTime, random) = payload
       if (parent.searchState == SearchState.Cancelled) payload
       else {
         val updatedGlobalsOption: Option[UCBPedrosoReiGlobals[S, A, Double]] = globalsOption.map {
@@ -41,7 +41,7 @@ object DoublePrecisionSynchronization {
               val updatedChildren: Array[SparkBanditChild[S, A]] =
                 parent.children.map { child =>
 
-                  val updatedReward = Sampler.rewardFunction(child.mctsStats, updatedGlobals, parent.mctsStats.observations)
+                  val updatedReward = Sampler.rewardFunction(child.mctsStats, updatedGlobals, parent.mctsStats.observations.toInt)
                   child.copy(
                     reward = updatedReward
                   )
@@ -52,7 +52,7 @@ object DoublePrecisionSynchronization {
               )
           }
 
-        (updatedParent, updatedGlobalsOption)
+        (updatedParent, updatedGlobalsOption, stopTime, random)
       }
     }
   }

@@ -1,0 +1,6 @@
+package com.github.robfitzgerald.dabtree.local.sampler
+
+import com.github.robfitzgerald.dabtree.local.sampler.pedrosorei.UCBPedrosoReiSamplerTypeclass
+import com.github.robfitzgerald.dabtree.local.sampler.pedrosorei.UCBPerosoReioGlobalStateOps
+
+object implicits extends SamplerOps with UCBPedrosoReiSamplerTypeclass with UCBPerosoReioGlobalStateOps with Serializable

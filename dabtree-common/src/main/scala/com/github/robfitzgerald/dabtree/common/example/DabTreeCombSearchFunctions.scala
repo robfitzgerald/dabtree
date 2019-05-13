@@ -8,11 +8,10 @@ class DabTreeCombSearchFunctions(
   realSolution    : Vector[Double],
   possibleValues  : Vector[Double],
   numChildren     : Int,
-  expandLimit     : Int,
-  random          : Random
+  expandLimit     : Int
 ) extends DabTreeFunctionParameters[Vector[Double], Double, Double] {
   // randomly fill our vector
-  def simulate(state: Vector[Double]): Vector[Double] =  {
+  override def simulate(state: Vector[Double], random: Random): Vector[Double] =  {
     state ++ {
       for {
         _ <- 1 to (realSolution.size - state.size)
@@ -24,7 +23,7 @@ class DabTreeCombSearchFunctions(
   }
 
   // evaluate as the Euclidian distance, which we wish to minimize
-  def evaluate(state: Vector[Double]): Double = {
+  override def evaluate(state: Vector[Double]): Double = {
     val sum: Double = state.
       zip(realSolution).
       map { case (a, b) => math.pow(a - b, 2) }.
@@ -33,7 +32,7 @@ class DabTreeCombSearchFunctions(
   }
 
   // generate values in the range [0, 1] stepping by 0.05 (21 values)
-  def generateChildren(state: Vector[Double]): Array[(Vector[Double], Option[Double])] = {
+  override def generateChildren(state: Vector[Double]): Array[(Vector[Double], Option[Double])] = {
     {
       for {
         n <- 1 to numChildren
@@ -43,7 +42,7 @@ class DabTreeCombSearchFunctions(
   }
 
   // allow up to the user-provided expand limit
-  def allowChildExpansion(state: Vector[Double]): Boolean = {
+  override def allowChildExpansion(state: Vector[Double]): Boolean = {
     val expLim = expandLimit
     val canExpand = state.size < expLim
     if (canExpand) {
@@ -59,13 +58,11 @@ object DabTreeCombSearchFunctions {
     realSolution    : Vector[Double],
     possibleValues  : Vector[Double],
     numChildren     : Int,
-    expandLimit     : Int,
-    random          : Random
+    expandLimit     : Int
   ): DabTreeCombSearchFunctions = new DabTreeCombSearchFunctions(
     realSolution,
     possibleValues,
     numChildren,
-    expandLimit,
-    random
+    expandLimit
   )
 }

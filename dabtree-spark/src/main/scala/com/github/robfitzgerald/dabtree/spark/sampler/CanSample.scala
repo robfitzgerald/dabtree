@@ -56,12 +56,6 @@ trait CanSample [State, Action, Value, Globals] {
   def updateSamplerState: (Globals, State, Action, Value) => Globals
 
   /**
-    * selects the index of a random child
-    * @return an int index
-    */
-  def randomSelection: Parent => Int
-
-  /**
     * computes the reward based on the current stats, global variables, and parent observations
     * @return a reward value for this node.
     */

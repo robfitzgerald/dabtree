@@ -6,6 +6,7 @@ import com.github.robfitzgerald.dabtree.common.SearchStats
 import com.github.robfitzgerald.dabtree.spark.mctsstats.immutable.MCTSStatsImmutableDoublePrecisionImpl
 import com.github.robfitzgerald.dabtree.spark.sampler.pedrosorei.Payload
 import com.github.robfitzgerald.dabtree.spark.objective.Objective
+import com.github.robfitzgerald.dabtree.spark.searchcontext.CancelledPayloadAccumulator.CancelledData
 
 object DoublePrecisionCollect {
   case class CollectResult[S](
@@ -16,14 +17,22 @@ object DoublePrecisionCollect {
     activatedCount: Int = 0,
     suspendedCount: Int = 0,
     cancelledCount: Int = 0,
-    samples: Int = 0,
-    iterations: Int = 0
+    samples: Long = 0,
+    iterations: Int = 0,
+    synchronizations: Int = 0
   ) {
+
+    lazy val totalStateChanges: Int = activatedCount + suspendedCount + cancelledCount
+    def activatedRatio: Double = activatedCount.toDouble / totalStateChanges
+    def suspendedRatio: Double = suspendedCount.toDouble / totalStateChanges
+    def cancelledRatio: Double = cancelledCount.toDouble / totalStateChanges
 
     def addIterations(iterations: Int): CollectResult[S] =
       this.copy(iterations = iterations)
+    def addSynchronizations(synchronizations: Int): CollectResult[S] =
+      this.copy(synchronizations = synchronizations)
 
-    def + (stats: SearchStats, samples: Int): CollectResult[S] = {
+    def + (stats: SearchStats, samples: Long): CollectResult[S] = {
       this.copy(
         payloadStateTransitions = this.payloadStateTransitions + stats.totalStateTransitions,
         payloadsCount = this.payloadsCount + 1,
@@ -72,13 +81,18 @@ object DoublePrecisionCollect {
   def csvHeader: String = s"cost,payloadsCount,activatedCount,suspendedCount,cancelledCount,samples,iterations"
 
 
-  def collectDoublePrecision[S, A](payloads: RDD[Payload[S, A, Double]], objective: Objective[Double], iterations: Int): Option[CollectResult[S]] = {
+  def collectDoublePrecision[S, A](payloads: RDD[Payload[S, A, Double]], cancelledData: CancelledData, objective: Objective[Double], iterations: Int, synchronizations: Int): Option[CollectResult[S]] = {
     if (payloads.isEmpty) None
     else {
+      val initialAccumulatorState =
+        CollectResult[S]().
+          addIterations(iterations).
+          addSynchronizations(synchronizations) + (cancelledData.searchStats, cancelledData.observations)
+
       val collectResult = payloads.
-        aggregate(CollectResult[S]().addIterations(iterations))(
+        aggregate(initialAccumulatorState)(
           (acc: CollectResult[S], payload: Payload[S, A, Double]) => {
-            val (parent, globalsOption) = payload
+            val (parent, globalsOption, _, _) = payload
 
             // adds search stats and samples to this accumulator
             val accStatsUpdate: CollectResult[S] = acc + (parent.searchStats, parent.mctsStats.observations)
