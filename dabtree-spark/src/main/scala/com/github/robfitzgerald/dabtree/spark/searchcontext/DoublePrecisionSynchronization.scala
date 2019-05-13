@@ -28,7 +28,7 @@ object DoublePrecisionSynchronization {
     val bestGlobalState: UCBPedrosoReiGlobalState[S, A, Double] = Foldable[FTransformer].fold(allActiveGlobals)
 
     payloads.map { payload =>
-      val (parent, globalsOption, stopTime) = payload
+      val (parent, globalsOption, stopTime, random) = payload
       if (parent.searchState == SearchState.Cancelled) payload
       else {
         val updatedGlobalsOption: Option[UCBPedrosoReiGlobals[S, A, Double]] = globalsOption.map {
@@ -52,7 +52,7 @@ object DoublePrecisionSynchronization {
               )
           }
 
-        (updatedParent, updatedGlobalsOption, stopTime)
+        (updatedParent, updatedGlobalsOption, stopTime, random)
       }
     }
   }

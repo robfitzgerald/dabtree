@@ -1,6 +1,7 @@
 package com.github.robfitzgerald.dabtree.spark.searchcontext
 
 import scala.annotation.tailrec
+import scala.util.Random
 
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
@@ -32,7 +33,8 @@ class SparkAsyncSearch[S, A](
   expandObservationsThreshold: Int = 30,
   pStarPromotion             : Double = 0.5D,
   maxExpandPerIteration      : Int = 2,
-  resultCollectionBufferTime: Long = 1000L
+  resultCollectionBufferTime: Long = 1000L,
+  seed: Long = 0
 ) {
 
   def run(iterationsMax: Int, durationMax: Long, samplesPerIteration: Int): Option[CollectResult[S]] = {
@@ -77,7 +79,7 @@ class SparkAsyncSearch[S, A](
 //    val checkpointDirectory = if (workingDirectory.endsWith("/")) s"${workingDirectory}checkpoint/" else s"$workingDirectory/checkpoint"
 //    sparkContext.setCheckpointDir(checkpointDirectory)
 
-
+    val topRandom = new Random(seed)
 
     /**
       * runs each iteration of our algorithm, with break points in place to short-circuit for when we exceed our compute time
@@ -97,7 +99,7 @@ class SparkAsyncSearch[S, A](
 
         val stop: Boolean =
           if (it % SparkAsyncSearch.TerminationCheckRate == 0) {
-            frontier.map{ case (_, _, stopTime) => stopTime < System.currentTimeMillis() }.fold(false){_||_}
+            frontier.map{ case (_, _, stopTime, _) => stopTime < System.currentTimeMillis() }.fold(false){_||_}
           } else false
 
         if (stop) {
@@ -109,7 +111,7 @@ class SparkAsyncSearch[S, A](
           val sampledFrontier: RDD[Payload[S, A, Double]] =
           frontier.
             map { payload =>
-              val (parent, _, stopTime) = payload
+              val (parent, _, stopTime, random) = payload
               if (System.currentTimeMillis() > stopTime) {
                 payload
               } else if (parent.searchState != SearchState.Activated) { // only sample activated nodes
@@ -137,7 +139,7 @@ class SparkAsyncSearch[S, A](
           val expandedFrontier: RDD[Payload[S, A, Double]] =
           syncedFrontier.
             flatMap { payload =>
-              val (_, _, stopTime) = payload
+              val (_, _, stopTime, random) = payload
               if (System.currentTimeMillis() > stopTime) { // exceeded time budget - no op
                 Iterator(payload)
                 //                  } else if (parent.searchState != SearchState.Activated) { // only expand children of Activated nodes - no op (wait, this isn't desired, is it?)
@@ -155,7 +157,7 @@ class SparkAsyncSearch[S, A](
                 else {
                   val rebalanced: Iterator[Payload[S, A, Double]] = bCastRebalanceFunction.value(partitionList).toIterator
                   val noCancelled = rebalanced.flatMap{ payload =>
-                    val (parent, _, _) = payload
+                    val (parent, _, _, _) = payload
                     if (parent.searchState == SearchState.Cancelled) {
                       val cancelledData = CancelledPayloadAccumulator.CancelledData(
                         parent.searchStats,
@@ -207,7 +209,8 @@ class SparkAsyncSearch[S, A](
         )
         val newGlobalState = UCBPedrosoReiGlobalState[S, A, Double](objective)
         val newGlobalMeta = UCBPedrosoReiMetaParameters(explorationCoefficient(index))
-        (newParent, Some(UCBPedrosoReiGlobals[S, A, Double](newGlobalState, newGlobalMeta)), stopTime)
+        val newRandom = new Random(topRandom.nextLong())
+        (newParent, Some(UCBPedrosoReiGlobals[S, A, Double](newGlobalState, newGlobalMeta)), stopTime, newRandom)
       }
     }.toList
 

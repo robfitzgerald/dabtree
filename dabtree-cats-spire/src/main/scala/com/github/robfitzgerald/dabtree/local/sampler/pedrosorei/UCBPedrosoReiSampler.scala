@@ -1,5 +1,7 @@
 package com.github.robfitzgerald.dabtree.local.sampler.pedrosorei
 
+import scala.util.Random
+
 import com.github.robfitzgerald.dabtree.local.banditnode._
 import com.github.robfitzgerald.dabtree.local.Objective
 import com.github.robfitzgerald.dabtree.local.mctsstats.MCTSStats
@@ -22,7 +24,7 @@ import spire.math._
   * @tparam V user-provided value type
   */
 class UCBPedrosoReiSampler[S, A, V : Numeric : Trig](
-  override val simulate       : S => S,
+  override val simulate       : (S, Random) => S,
   override val evaluate       : S => V,
   override val objective      : Objective[V],
   override val randomSelection: BanditParent[S, A, V] => Int = RandomSelection.complimentaryMultiplyWithCarry[S, A, V]
@@ -58,7 +60,7 @@ class UCBPedrosoReiSampler[S, A, V : Numeric : Trig](
 object UCBPedrosoReiSampler {
 
   def apply[S, A, V: Numeric : Trig](
-    simulate  : S => S,
+    simulate  : (S, Random) => S,
     evaluate  : S => V,
     objective : Objective[V],
     randomSelection: BanditParent[S, A, V] => Int = RandomSelection.complimentaryMultiplyWithCarry[S, A, V]

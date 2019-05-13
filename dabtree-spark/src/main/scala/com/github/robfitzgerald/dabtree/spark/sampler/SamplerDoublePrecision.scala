@@ -1,6 +1,8 @@
 
 package com.github.robfitzgerald.dabtree.spark.sampler
 
+import scala.util.Random
+
 import org.apache.spark.broadcast.Broadcast
 import cats.Eval
 
@@ -14,9 +16,8 @@ import com.github.robfitzgerald.dabtree.spark.sampler.pedrosorei.Payload
 import com.github.robfitzgerald.dabtree.spark.sampler.pedrosorei.UCBPedrosoReiGlobals
 
 class SamplerDoublePrecision[S, A] (
-  simulate       : S => S,
+  simulate       : (S, Random) => S,
   evaluate       : S => Double,
-//  banditSelection: SparkBanditParent[S,A] => Int,
   objective      : Objective[Double]
 ) extends Serializable {
 
@@ -25,7 +26,7 @@ class SamplerDoublePrecision[S, A] (
     samples           : Int
   ): Eval[Payload[S, A, Double]] = {
 
-    val (parent: SparkBanditParent[S, A], globalsOption: Option[UCBPedrosoReiGlobals[S, A, Double]], stopTime: Long) = payload
+    val (parent: SparkBanditParent[S, A], globalsOption: Option[UCBPedrosoReiGlobals[S, A, Double]], stopTime: Long, random: Random) = payload
     globalsOption match {
       case None =>
         Eval.now{payload}
@@ -49,7 +50,7 @@ class SamplerDoublePrecision[S, A] (
             // basic MCTS sampling
             val selectedAction: A = childrenActions(bestIdx)
             val selectedState: S = childrenStates(bestIdx)
-            val simulatedState: S = simulate(selectedState)
+            val simulatedState: S = simulate(selectedState, random)
             val cost: Double = evaluate(simulatedState)
 
             // perform update on child and parent (globals via immutable semantics, parent/child via mutable)
@@ -94,7 +95,7 @@ class SamplerDoublePrecision[S, A] (
             children = updatedChildren
           )
 
-          (updatedParent, Some(updatedSamplerState), stopTime)
+          (updatedParent, Some(updatedSamplerState), stopTime, random)
         }
 
     }
@@ -126,7 +127,7 @@ class SamplerDoublePrecision[S, A] (
 
 object SamplerDoublePrecision {
   def apply[S, A](
-    simulate       : S => S,
+    simulate       : (S, Random) => S,
     evaluate       : S => Double,
 //    banditSelection: SparkBanditParent[S,A] => Int,
     objective      : Objective[Double]

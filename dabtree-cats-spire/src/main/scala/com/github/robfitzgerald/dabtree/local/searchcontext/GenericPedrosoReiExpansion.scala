@@ -37,7 +37,7 @@ object GenericPedrosoReiExpansion {
     generateChildren     : S => Array[(S, Option[A])]
   )(payload: Payload[S,A,V]): G[Payload[S,A,V]] = {
 
-    val (banditParent, optionGlobals) = payload
+    val (banditParent, optionGlobals, random) = payload
 
     val allowExpansion = allowChildExpansion(banditParent.state)
 
@@ -98,10 +98,10 @@ object GenericPedrosoReiExpansion {
 
           // re-package as payloads
           val expandedAsPayloads: Array[Payload[S,A,V]] =
-            expandedChildren.map { case (expandedChild, _) => (expandedChild, Some(globals)) }
+            expandedChildren.map { case (expandedChild, _) => (expandedChild, Some(globals), random) }
 
           // combine with parent and return, wrapped in container type G
-          expandedAsPayloads.foldLeft(Monad[G].pure((updatedParent, Option(globals)))) { (acc, b) =>
+          expandedAsPayloads.foldLeft(Monad[G].pure((updatedParent, Option(globals), random))) { (acc, b) =>
             val rhs: G[Payload[S,A,V]] = Monad[G].pure(b)
             MonoidK[G].combineK(acc, rhs)
           }

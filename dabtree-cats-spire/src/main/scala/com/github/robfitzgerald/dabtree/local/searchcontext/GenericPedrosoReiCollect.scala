@@ -50,7 +50,7 @@ object GenericPedrosoReiCollect {
     if (payloads.isEmpty) None
     else {
       val collectResult = payloads.foldLeft(CollectResult[S, V](iterations = iterations)) { (acc, payload) =>
-        val (parent, globalsOption) = payload
+        val (parent, globalsOption, random) = payload
 
         // adds search stats and samples to this accumulator
         val accStatsUpdate: CollectResult[S, V] = acc.add(parent.searchStats, parent.mctsStats.observations)

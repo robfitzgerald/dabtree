@@ -33,7 +33,7 @@ object Ranking {
     */
   def CostLowerBoundedRanking[State, Action, Value : Numeric]: Payload[State, Action, Value] => Double =
     (payload: Payload[State, Action, Value]) => {
-      val (banditParent, globalsOption) = payload
+      val (banditParent, globalsOption, _) = payload
 
       {
         for {

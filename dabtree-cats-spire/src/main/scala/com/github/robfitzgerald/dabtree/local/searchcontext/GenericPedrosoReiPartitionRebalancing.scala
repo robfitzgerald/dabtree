@@ -28,7 +28,7 @@ object GenericPedrosoReiPartitionRebalancing {
     val (nonCancelledRankedPayloads: RankedPayload[S, A, V], cancelledPayloads: Chain[Payload[S, A, V]]) =
       payloads.
         foldLeft((SortedSet.empty[(Payload[S, A, V], Double)], Chain.empty[Payload[S, A, V]])) { case (accumulator, payload) =>
-          val (parent, _) = payload
+          val (parent, _, _) = payload
           val (nonCancelled, cancelled) = accumulator
           parent.searchState match {
             case SearchState.Cancelled =>
@@ -66,9 +66,9 @@ object GenericPedrosoReiPartitionRebalancing {
         // we have reached our active payload limit, so we must force the cancellation of any remaining payloads.
         val cancelledRemainder: Chain[Payload[S, A, V]] = {
           sorted.foldLeft(Chain.empty[Payload[S, A, V]]) { (acc, evaluatedPayload) =>
-            val (parent, _) = evaluatedPayload._1
+            val (parent, _, random) = evaluatedPayload._1
             val cancelledParent = parent.cancel()
-            acc :+ (cancelledParent, None)
+            acc :+ (cancelledParent, None, random)
           }
         }
         solution ++ cancelledRemainder
@@ -76,12 +76,12 @@ object GenericPedrosoReiPartitionRebalancing {
         sorted.headOption match {
           case None => solution
           case Some((payload: Payload[S, A, V], _: Double)) =>
-            val (parent, globals) = payload
+            val (parent, globals, random) = payload
             val updatedParent =
               if (solution.size < activatedPayloadLimit) parent.activate()
               else parent.suspend()
 
-            _update(sorted.tail, solution :+ (updatedParent, globals))
+            _update(sorted.tail, solution :+ (updatedParent, globals, random))
         }
       }
     }

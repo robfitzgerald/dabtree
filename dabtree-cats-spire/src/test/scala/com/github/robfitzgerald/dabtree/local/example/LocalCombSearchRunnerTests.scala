@@ -52,7 +52,7 @@ class LocalCombSearchRunnerTests extends DefaultTest {
 //                println(realSolution)
 //                println("Distance:")
 //                println(evaluate(bestState))
-                DabTreeCombSearchFunctions(realSolution, possibleValues, numChildren, expandLimit, new scala.util.Random(random.nextLong)).evaluate(bestState) should be < 0.5D // it should get reasonably close...
+                DabTreeCombSearchFunctions(realSolution, possibleValues, numChildren, expandLimit).evaluate(bestState) should be < 0.5D // it should get reasonably close...
             }
         }
       }

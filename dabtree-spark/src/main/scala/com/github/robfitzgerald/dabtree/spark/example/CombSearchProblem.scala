@@ -44,8 +44,7 @@ trait CombSearchProblem {
     realSolution,
     possibleValues,
     numChildren,
-    expandLimit,
-    new scala.util.Random(random.nextLong)
+    expandLimit
   )
 
   def startFrontier: List[(State, Option[Action])] = List((Vector.empty[Double], Option.empty[Action]))

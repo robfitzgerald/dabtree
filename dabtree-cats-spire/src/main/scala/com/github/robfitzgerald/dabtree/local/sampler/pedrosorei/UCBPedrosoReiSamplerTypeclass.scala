@@ -1,5 +1,7 @@
 package com.github.robfitzgerald.dabtree.local.sampler.pedrosorei
 
+import scala.util.Random
+
 import cats.Eval
 
 import com.github.robfitzgerald.dabtree.local.banditnode.BanditParent
@@ -9,14 +11,14 @@ import spire.math.Numeric
 
 trait UCBPedrosoReiSamplerTypeclass {
 
-  implicit def UCBPedrosoReiSamplerOps[S, A, V : Numeric : Trig]: GenericSampler[UCBPedrosoReiSampler[S,A,V], (BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]])] =
-    new GenericSampler[UCBPedrosoReiSampler[S,A,V], (BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]])] {
+  implicit def UCBPedrosoReiSamplerOps[S, A, V : Numeric : Trig]: GenericSampler[UCBPedrosoReiSampler[S,A,V], (BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]], Random)] =
+    new GenericSampler[UCBPedrosoReiSampler[S,A,V], (BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]], Random)] {
       def run(
         sampler: UCBPedrosoReiSampler[S, A, V],
-        payload: (BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]]),
+        payload: (BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]], Random),
         samples: Int
-      ): Eval[(BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]])] = {
-        val (parent: BanditParent[S, A, V], globalsOption: Option[UCBPedrosoReiGlobals[S, A, V]]) = payload
+      ): Eval[(BanditParent[S, A, V], Option[UCBPedrosoReiGlobals[S, A, V]], Random)] = {
+        val (parent: BanditParent[S, A, V], globalsOption: Option[UCBPedrosoReiGlobals[S, A, V]], random) = payload
         globalsOption match {
           case None =>
             Eval.now{payload}
@@ -33,10 +35,11 @@ trait UCBPedrosoReiSamplerTypeclass {
                             sampler.evaluate,
                             sampler.updateStats,
                             sampler.updateSamplerState,
-                            sampler.rewardFunction
+                            sampler.rewardFunction,
+                            random
                           )
             } yield {
-              (result._1, Some(result._2))
+              (result._1, Some(result._2), random)
             }
         }
       }

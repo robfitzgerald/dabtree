@@ -6,7 +6,7 @@ lazy val dabtree = project
   .settings(
     name := "dabtree",
     crossScalaVersions := Seq("2.11.12", "2.12.8"),
-    version := "1.0.0"
+    version := "1.1.0"
   )
   .aggregate(
     dabtreeCommon,
@@ -15,7 +15,7 @@ lazy val dabtree = project
   )
 
 lazy val commonSettings = Seq(
-  version := "0.4.1",
+  version := "0.5.0",
   test in assembly := {},
   scalacOptions ++= compilerOpts
 )

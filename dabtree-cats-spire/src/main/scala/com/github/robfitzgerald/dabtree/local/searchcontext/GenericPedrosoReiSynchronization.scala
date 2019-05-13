@@ -29,7 +29,7 @@ object GenericPedrosoReiSynchronization {
     val bestGlobalState: UCBPedrosoReiGlobalState[S, A, V] = Foldable[FTransformer].fold(allActiveGlobals)
 
     payloads.map { payload =>
-      val (parent, globalsOption) = payload
+      val (parent, globalsOption, random) = payload
       if (parent.searchState == SearchState.Cancelled) payload
       else {
         val updatedGlobalsOption: Option[UCBPedrosoReiGlobals[S, A, V]] = globalsOption.map {
@@ -53,7 +53,7 @@ object GenericPedrosoReiSynchronization {
               )
           }
 
-        (updatedParent, updatedGlobalsOption)
+        (updatedParent, updatedGlobalsOption, random)
       }
     }
   }

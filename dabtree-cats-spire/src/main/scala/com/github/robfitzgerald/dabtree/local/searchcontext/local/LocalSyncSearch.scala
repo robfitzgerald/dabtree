@@ -1,6 +1,7 @@
 package com.github.robfitzgerald.dabtree.local.searchcontext.local
 
 import scala.annotation.tailrec
+import scala.util.Random
 
 import cats.implicits._
 
@@ -20,7 +21,7 @@ import spire.math.Numeric
   * runs a search executed in the standard library List container and in the Id effect type
   */
 class LocalSyncSearch[S, A, V: Numeric : Trig](
-  simulate                   : S => S,
+  simulate                   : (S, Random) => S,
   evaluate                   : S => V,
   objective                  : Objective[V],
   generateChildren           : S => Array[(S, Option[A])],
@@ -34,9 +35,11 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
   explorationUpdate          : Option[Double => Double] = None,
   expandObservationsThreshold: Int = 30,
   pStarPromotion             : Double = 0.5D,
-  maxExpandPerIteration      : Int = 2
+  maxExpandPerIteration      : Int = 2,
+  seed: Long = 0
 ) {
 
+  val topRandom: Random = new Random(seed)
   val Sampler: UCBPedrosoReiSampler[S, A, V] = UCBPedrosoReiSampler[S, A, V](simulate, evaluate, objective)
   implicit val objectiveImplicit: Objective[V] = objective
 
@@ -79,14 +82,14 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
         ///////////////////////
         val sampledFrontier: List[Payload[S, A, V]] =
           frontier.
-            map { case (parent, globals) =>
+            map { case (parent, globals, random) =>
               if (parent.searchState == SearchState.Activated) {
-                val updatedPayload: Payload[S, A, V] = Sampler.run((parent, globals), samplesPerIteration).value
+                val updatedPayload: Payload[S, A, V] = Sampler.run((parent, globals, random), samplesPerIteration).value
 //                print("^")
                 updatedPayload
               } else {
 //                print("_")
-                (parent, globals)
+                (parent, globals, random)
               }
             }
 //        print("\n")
@@ -146,7 +149,8 @@ class LocalSyncSearch[S, A, V: Numeric : Trig](
             )
             val newGlobalState = UCBPedrosoReiGlobalState[S, A, V](objective)
             val newGlobalMeta = UCBPedrosoReiMetaParameters(explorationCoefficient(index))
-          (newParent, Some(UCBPedrosoReiGlobals[S, A, V](newGlobalState, newGlobalMeta)))
+            val random: Random = new Random(topRandom.nextLong())
+          (newParent, Some(UCBPedrosoReiGlobals[S, A, V](newGlobalState, newGlobalMeta)), random)
         }
 
     val (searchResult, iterationsCount) = _run(startFrontierPayloads)

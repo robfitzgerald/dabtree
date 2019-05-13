@@ -92,7 +92,7 @@ object DoublePrecisionCollect {
       val collectResult = payloads.
         aggregate(initialAccumulatorState)(
           (acc: CollectResult[S], payload: Payload[S, A, Double]) => {
-            val (parent, globalsOption, _) = payload
+            val (parent, globalsOption, _, _) = payload
 
             // adds search stats and samples to this accumulator
             val accStatsUpdate: CollectResult[S] = acc + (parent.searchStats, parent.mctsStats.observations)

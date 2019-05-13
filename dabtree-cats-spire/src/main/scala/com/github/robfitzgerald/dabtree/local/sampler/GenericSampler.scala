@@ -1,5 +1,7 @@
 package com.github.robfitzgerald.dabtree.local.sampler
 
+import scala.util.Random
+
 import cats.{Eval, Monad}
 
 import com.github.robfitzgerald.dabtree.local.banditnode.{BanditChild, BanditParent}
@@ -17,11 +19,12 @@ object GenericSampler extends SamplerOps with Serializable {
     sampleIterations  : Int,
     samplerState      : SamplerState,
     randomSelection   : BanditParent[S,A,V] => Int,
-    simulate          : S => S,
+    simulate          : (S, Random) => S,
     evaluate          : S => V,
     updateStats       : (MCTSStatsMutableImpl[V], V) => Unit,
     updateSamplerState: (SamplerState, S, A, V) => SamplerState,
-    rewardFunction    : (MCTSStatsMutableImpl[V], SamplerState, Int) => Double
+    rewardFunction    : (MCTSStatsMutableImpl[V], SamplerState, Int) => Double,
+    random            : Random
   ): Eval[(BanditParent[S,A,V], SamplerState)] = {
     Eval.now {
 
@@ -43,7 +46,7 @@ object GenericSampler extends SamplerOps with Serializable {
 //        val selectedChildIndex: Int = randomSelection(parent)
         val selectedAction: A = childrenActions(bestIdx)
         val selectedState: S = childrenStates(bestIdx)
-        val simulatedState: S = simulate(selectedState)
+        val simulatedState: S = simulate(selectedState, random)
         val cost: V = evaluate(simulatedState)
 
         // perform update on child and parent (globals via immutable semantics, parent/child via mutable)

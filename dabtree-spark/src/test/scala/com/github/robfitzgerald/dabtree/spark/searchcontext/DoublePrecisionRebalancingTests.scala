@@ -1,5 +1,7 @@
 package com.github.robfitzgerald.dabtree.spark.searchcontext
 
+import scala.util.Random
+
 import com.github.robfitzgerald.dabtree.DefaultTest
 import cats.implicits._
 
@@ -55,6 +57,7 @@ object DoublePrecisionRebalancingTests {
   type TestPayload = Payload[TestState, TestAction, Double]
   val probSize = 10
   val problem: List[TestPayload] = {
+    val topRandom: Random = Random
     for {
       index <- 1 to probSize
     } yield {
@@ -69,7 +72,7 @@ object DoublePrecisionRebalancingTests {
         SearchStats(),
         None
       )
-      (parent, Option.empty[UCBPedrosoReiGlobals[TestState, TestAction, Double]], 0L)
+      (parent, Option.empty[UCBPedrosoReiGlobals[TestState, TestAction, Double]], Long.MaxValue, new Random(topRandom.nextLong()))
     }
   }.toList
 }

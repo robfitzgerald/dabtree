@@ -29,7 +29,7 @@ object DoublePrecisionRebalancing {
     val (nonCancelledRankedPayloads: RankedPayload[S, A, Double], cancelledPayloads: Chain[Payload[S, A, Double]], latestStopTime: Long) =
       payloads.
         foldLeft((SortedSet.empty[(Payload[S, A, Double], Double)], Chain.empty[Payload[S, A, Double]], DefaultStopTimeValue)) { case (accumulator, payload) =>
-          val (parent, _, stopTime) = payload
+          val (parent, _, stopTime, _) = payload
           val (nonCancelled, cancelled, latestStopTimeSeen) = accumulator
           val nextLatestStopTime: Long = math.max(stopTime, latestStopTimeSeen)
           parent.searchState match {
@@ -70,9 +70,9 @@ object DoublePrecisionRebalancing {
         // we have reached our active payload limit, so we must force the cancellation of any remaining payloads.
         val cancelledRemainder: Chain[Payload[S, A, Double]] = {
           sorted.foldLeft(Chain.empty[Payload[S, A, Double]]) { (acc, evaluatedPayload) =>
-            val (parent, _, stopTime) = evaluatedPayload._1
+            val (parent, _, stopTime, random) = evaluatedPayload._1
             val cancelledParent = parent.cancel()
-            acc :+ (cancelledParent, None, stopTime)
+            acc :+ (cancelledParent, None, stopTime, random)
           }
         }
         solution ++ cancelledRemainder
@@ -80,12 +80,12 @@ object DoublePrecisionRebalancing {
         sorted.headOption match {
           case None => solution
           case Some((payload: Payload[S, A, Double], _: Double)) =>
-            val (parent, globals, stopTime) = payload
+            val (parent, globals, stopTime, random) = payload
             val updatedParent =
               if (solution.size < activatedPayloadLimit) parent.activate()
               else parent.suspend()
 
-            _update(sorted.tail, solution :+ (updatedParent, globals, stopTime))
+            _update(sorted.tail, solution :+ (updatedParent, globals, stopTime, random))
         }
       }
     }

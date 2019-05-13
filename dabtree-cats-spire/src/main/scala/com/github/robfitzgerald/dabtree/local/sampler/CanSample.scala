@@ -1,5 +1,7 @@
 package com.github.robfitzgerald.dabtree.local.sampler
 
+import scala.util.Random
+
 import com.github.robfitzgerald.dabtree.local.banditnode.{BanditChild, BanditParent}
 import com.github.robfitzgerald.dabtree.local.Objective
 import com.github.robfitzgerald.dabtree.local.mctsstats.MCTSStats
@@ -23,7 +25,7 @@ trait CanSample [State, Action, Value, Globals] {
     * given a state, simulate state transitions to a terminal state
     * @return the terminal state, based on the user's state traversal algorithm
     */
-  def simulate: State => State
+  def simulate: (State, Random) => State
 
   /**
     * evaluate the cost of the terminal state

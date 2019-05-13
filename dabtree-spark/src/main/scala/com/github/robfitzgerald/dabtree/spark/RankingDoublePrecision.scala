@@ -29,7 +29,7 @@ object RankingDoublePrecision {
     */
   def CostLowerBoundedRanking[State, Action]: Payload[State, Action, Double] => Double =
     (payload: Payload[State, Action, Double]) => {
-      val (banditParent, globalsOption, _) = payload
+      val (banditParent, globalsOption, _, _) = payload
 
       {
         for {
