@@ -1,6 +1,6 @@
 ### Distributed Associative Bandit Tree Search (DABTree)
 
-This library explores the possibility of using Monte Carlo Tree Search for arbitrary combinatorial search problems. Some search problems have interdependent costs, which is difficult to model using standard ILP solvers. The probabilistic nature of the MCTS tree makes it suitable for these sorts of problems.
+This library explores the possibility of using Monte Carlo Tree Search for arbitrary combinatorial search problems. Some search problems have interdependent costs, which is difficult to model using standard ILP approaches. The probabilistic nature of the MCTS tree makes it suitable for these sorts of problems.
 
 DABTree under research to solve route guidance problems with a social equilibrium objective. It extends MCTS
 
@@ -32,6 +32,8 @@ The user must define/provide the following functions and parameters:
 
 
 ### References
+
+[Mougouei, Davoud, David MW Powers, and Asghar Moeini. "An integer linear programming model for binary knapsack problem with dependent item values." Australasian Joint Conference on Artificial Intelligence. Springer, Cham, 2017.](https://link.springer.com/chapter/10.1007/978-3-319-63004-5_12)
 
 [Browne, Cameron B., et al. "A survey of monte carlo tree search methods." IEEE Transactions on Computational Intelligence and AI in games 4.1 (2012): 1-43.
 ](https://ieeexplore.ieee.org/abstract/document/6145622)
